@@ -109,9 +109,11 @@ static struct flux_list_data
   double dB[3];
 #endif /* #ifdef MHD */
 
-#ifndef ISOTHERM_EQS
+// #ifndef ISOTHERM_EQS
+#if !defined(ISOTHERM_EQS) || (defined(ISOTHERM_EQS) && defined(ISOTHERM_EQS_KEEP_INIT)) // Energy is still being exchanged
   double dEnergy;
 #endif /* #ifndef ISOTHERM_EQS */
+
 #ifdef MAXSCALARS
   double dConservedScalars[MAXSCALARS];
 #endif /* #ifdef MAXSCALARS */
@@ -276,22 +278,43 @@ void compute_interface_fluxes(tessellation *T)
       vel_face_turned[1] = vel_face[0] * geom.mx + vel_face[1] * geom.my + vel_face[2] * geom.mz;
       vel_face_turned[2] = vel_face[0] * geom.px + vel_face[1] * geom.py + vel_face[2] * geom.pz;
 #endif /* #if defined(RIEMANN_HLLC) || defined(RIEMANN_HLLD) */
-
+      // print out pressure and velocity face(vector with 3 dims)
+      // printf("PRINTING OUT PRESSURES AND VELOCITIES: \n");
+      // printf("BEFORE CONVERTING TO LOCAL FRAMES: \n");
+      // printf("left pressure: %e, right pressure: %e \n", state_center_L.press, state_center_R.press);
+      // printf("state_center_L.velx %e, state_center_R.vel_x %e\n", state_center_L.velx, state_center_R.velx);
       state_convert_to_local_frame(&state_center_L, vel_face, hubble_a, atime);
       state_convert_to_local_frame(&state_center_R, vel_face, hubble_a, atime);
-
+      // printf("AFTER CONVERTING TO LOCAL FRAMES: \n");
+      // printf("left pressure: %e, right pressure: %e \n", state_center_L.press, state_center_R.press);
+      // printf("state_center_L.velx %e, state_center_R.vel_x %e\n", state_center_L.velx, state_center_R.velx);
       /* copy center state to state at interface, then add extrapolation terms */
       state_L = state_center_L;
       state_R = state_center_R;
-
+      // printf("COPYING CENTER STATE TO STATE AT INTERFACE - SHOULD BE THE SAME \n");
+      // printf("state_L.press: %e, state_R.press: %e\n", state_L.press, state_R.press);
+      // printf("state_L.velx %e, stater_R.vel_x %e\n", state_L.velx, state_R.velx);
+      // printf("CALCULATING TIME EXTRAPOLATIONS: \n");
       face_do_time_extrapolation(&delta_time_L, &state_center_L, atime);
+      // printf("delta_time_L.press, %e\n", delta_time_L.press);
+      // printf("delta_time_L.velx, %e\n", delta_time_L.velx);
       face_do_time_extrapolation(&delta_time_R, &state_center_R, atime);
-
+      // printf("delta_time_R.press, %e\n", delta_time_R.press);
+      // printf("delta_time_R.velx, %e\n", delta_time_R.velx);
+      // printf("CALCULATING SPACE EXTRAPOLATIONS: \n");
       face_do_spatial_extrapolation(&delta_space_L, &state_center_L, &state_center_R);
+      // printf("delta_space_L.press, %e\n", delta_space_L.press);
+      // printf("delta_space_L.velx, %e\n", delta_space_L.velx);
       face_do_spatial_extrapolation(&delta_space_R, &state_center_R, &state_center_L);
-
+      // printf("delta_space_R.press, %e\n", delta_space_R.press);
+      // printf("delta_space_R.velx, %e\n", delta_space_R.velx);
+      // printf("ADD EXTRAPOLATIONS TO STATE AT INTERFACE: \n");
       face_add_extrapolations(&state_L, &delta_time_L, &delta_space_L, &stat);
       face_add_extrapolations(&state_R, &delta_time_R, &delta_space_R, &stat);
+      // printf("VALUES AFTER EXTRAPOLATIONS\n");
+      // printf("state_L.press: %d, state_R.press: %d \n", state_L.press, state_R.press);
+      // printf("state_L.velx %e, stater_R.vel_x %e\n", state_L.velx, state_R.velx);
+      // printf("END PRINTING PRESSURES AND VELOCITIES OF LEFT/RIGHT STATE\n");
 
 #ifdef MHD
       if(All.ComovingIntegrationOn)
@@ -353,9 +376,15 @@ void compute_interface_fluxes(tessellation *T)
       press = godunov_flux_3d(&state_L, &state_R, &state_face); /* exact ideal gas solver */
 #endif /* #ifdef RIEMANN_HLLD #else */
 #endif /* #ifdef RIEMANN_HLLC #else */
-
+      // printf("press from HLLC, %e\n", press);
       if(press < 0)
+      {
+        printf("VF[i].p1: ");
+        print_particle_info(DP[VF[i].p1].index);
+        printf("VF[i].p2: ");
+        print_particle_info(DP[VF[i].p2].index);
         terminate("press < 0: ID_L: %d, ID_R: %d", VF[i].p1, VF[i].p2);
+      }
 
 #ifdef GODUNOV_STATS
       get_mach_numbers(&state_L, &state_R, press);
@@ -560,7 +589,8 @@ void compute_interface_fluxes(tessellation *T)
                     }
 #endif /* #ifdef MAXSCALARS */
 
-#if !defined(ISOTHERM_EQS)
+// #if !defined(ISOTHERM_EQS)
+#if !defined(ISOTHERM_EQS) || (defined(ISOTHERM_EQS) && defined(ISOTHERM_EQS_KEEP_INIT)) // Energy is still being exchanged
                   SphP[p].Energy += dir * fluxes.energy;
 #endif /* #if !defined(ISOTHERM_EQS)  */
                 }
@@ -593,7 +623,8 @@ void compute_interface_fluxes(tessellation *T)
                   FluxList[Nflux].dP[1] = dir * fluxes.momentum[1];
                   FluxList[Nflux].dP[2] = dir * fluxes.momentum[2];
 
-#if !defined(ISOTHERM_EQS)
+// #if !defined(ISOTHERM_EQS)
+#if !defined(ISOTHERM_EQS) || (defined(ISOTHERM_EQS) && defined(ISOTHERM_EQS_KEEP_INIT)) // Energy is still being exchanged
                   FluxList[Nflux].dEnergy = dir * fluxes.energy;
 #endif /* #if !defined(ISOTHERM_EQS)  */
 
@@ -624,7 +655,8 @@ void compute_interface_fluxes(tessellation *T)
                   FluxList[Nflux].dP[0] += dir * Bx * state_face.Bx;
                   FluxList[Nflux].dP[1] += dir * By * state_face.Bx;
                   FluxList[Nflux].dP[2] += dir * Bz * state_face.Bx;
-#ifndef ISOTHERM_EQS
+// #ifndef ISOTHERM_EQS
+#if !defined(ISOTHERM_EQS) || (defined(ISOTHERM_EQS) && defined(ISOTHERM_EQS_KEEP_INIT)) // Energy is still being exchanged
                   FluxList[Nflux].dEnergy += dir * (Bx * Velx + By * Vely + Bz * Velz) * state_face.Bx * atime;
 #endif /* #ifndef ISOTHERM_EQS */
 
@@ -1127,10 +1159,16 @@ void state_convert_to_local_frame(struct state *st, double *vel_face, double hub
       st->velGas[1] /= atime;
       st->velGas[2] /= atime;
     }
-
+  // printf("CONVERTING TO LOCAL FRAMES\n");
   st->velx = st->velGas[0] - vel_face[0];
+  // printf("st->velx -> st->velGas[0]: %e - vel_face[0]: %e\n",st->velGas[0], vel_face[0]);
+  // printf("st->velx: %e\n", st->velx);
   st->vely = st->velGas[1] - vel_face[1];
+  // printf("st->vely -> st->velGas[1]: %e - vel_face[1]: %e\n",st->velGas[1], vel_face[1]);
+  // printf("st->vely: %e\n", st->vely);
   st->velz = st->velGas[2] - vel_face[2];
+  // printf("st->velz -> st->velGas[2]: %e - vel_face[2]: %e\n",st->velGas[2], vel_face[2]);
+  // printf("st->velz: %e\n", st->velz);
 
   if(All.ComovingIntegrationOn)
     {
@@ -1352,11 +1390,22 @@ void face_add_extrapolations(struct state *st_face, struct state *delta_time, st
  */
 void face_add_extrapolation(struct state *st_face, struct state *delta, struct fvs_stat *stat)
 {
+  // printf("TESTING face_add_extrapolation\n");
   st_face->rho += delta->rho;
+  // printf("st_face->rho: %e\n", st_face->rho);
+  // printf("delta->rho: %e\n", delta->rho);
   st_face->velx += delta->velx;
+  // printf("st_face->velx: %e\n", st_face->velx);
+  // printf("delta->velx: %e\n", delta->velx);
   st_face->vely += delta->vely;
+  // printf("st_face->vely: %e\n", st_face->vely);
+  // printf("delta->vely: %e\n", delta->vely);
   st_face->velz += delta->velz;
+  // printf("st_face->velz: %e\n", st_face->velz);
+  // printf("delta->velz: %e\n", delta->velz);
   st_face->press += delta->press;
+  // printf("st_face->press: %e\n", st_face->press);
+  // printf("delta->press: %e\n", delta->press);
 
 #ifdef MHD
 #ifndef ONEDIMS
@@ -1620,7 +1669,8 @@ void face_get_fluxes(struct state *st_L, struct state *st_R, struct state_face *
   flux->momentum[1] = (st_face->rho * st_face->vely * fac + st_face->press * geom->ny);
   flux->momentum[2] = (st_face->rho * st_face->velz * fac + st_face->press * geom->nz);
 
-#ifndef ISOTHERM_EQS
+// #ifndef ISOTHERM_EQS
+#if !defined(ISOTHERM_EQS) || (defined(ISOTHERM_EQS) && defined(ISOTHERM_EQS_KEEP_INIT)) // Energy is still being exchanged
   flux->energy =
       (0.5 * st_face->rho * (st_face->velx * st_face->velx + st_face->vely * st_face->vely + st_face->velz * st_face->velz) +
        st_face->press / GAMMA_MINUS1) *
@@ -1836,7 +1886,8 @@ void apply_flux_list(void)
         *(MyFloat *)(((char *)(&SphP[p])) + scalar_elements[k].offset_mass) += FluxListGet[i].dConservedScalars[k];
 #endif /* #ifdef MAXSCALARS */
 
-#ifndef ISOTHERM_EQS
+// #ifndef ISOTHERM_EQS
+#if !defined(ISOTHERM_EQS) || (defined(ISOTHERM_EQS) && defined(ISOTHERM_EQS_KEEP_INIT)) // Energy is still being exchanged
       SphP[p].Energy += FluxListGet[i].dEnergy;
 #endif /* #ifndef ISOTHERM_EQS */
     }

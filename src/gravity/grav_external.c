@@ -80,6 +80,16 @@ void gravity_external(void)
 #endif /* #ifdef CELL_CENTER_GRAVITY */
         pos = P[i].Pos;
 
+      /* 
+        Make gravity stronger
+
+        IFDEF RANDOMIZED
+        unshift pos 
+        test out a 1e15 run first though.
+        Try a high beta set-up
+      */
+
+
       double acc[3], pot;
       int flag_set = 0;
       gravity_external_get_force(pos, P[i].Type, P[i].ID, acc, &pot, &flag_set);
@@ -96,7 +106,7 @@ void gravity_external(void)
         {
           for(int k = 0; k < NUMDIMS; k++)
             P[i].GravAccel[k] += acc[k];
-#ifdef EVALPOTENTIAL
+#ifdef EVALPOTENTIAL // this runs but pot is 0
           P[i].Potential += pot;
 #endif
           P[i].ExtPotential += pot;
@@ -154,8 +164,8 @@ static void gravity_external_get_force(double pos[3], int type, MyIDType ID, dou
   *pot = 0;
 
 #ifdef EXTERNALGY
-  acc[1] += EXTERNALGY;
-  *pot = -(EXTERNALGY)*pos[1];
+  acc[1] += EXTERNALGY; // you have a constant gravitational acceleration in the y-direction.
+  *pot = -(EXTERNALGY)*pos[1]; //  F = -dU/dx, dU = F*dx -> U  = -Fx(there is no mass or density it seems..)
 #endif /* #ifdef EXTERNALGY */
 
 #ifdef STATICISO
@@ -187,16 +197,45 @@ static void gravity_external_get_force(double pos[3], int type, MyIDType ID, dou
   }
 #endif /* #ifdef STATICISO */
 
-#ifdef STATICNFW
+// #if defined(CGOLSNFW) && defined(STATICNFW) // NFW Potential based on the CGOLS configuration. Currently I have not tested this.
+//   {
+//     double r, m;
+//     double dx, dy, dz;
+//     double deviation = 1e-8; // in case we have r = 0 at the center
+
+//     double Rvir  = 53; // The virial radius in kpc - Make this a configuration option
+//     double Rhalo = Rvir/NFW_C; 
+
+//     dx = pos[0] - boxHalf_X + deviation;
+//     dy = pos[1] - boxHalf_Y + deviation;
+//     dz = pos[2] - boxHalf_Z + deviation;
+
+//     r = sqrt(dx * dx + dy * dy + dz * dz);
+
+//     // PROOFREAD BEFORE RUNNING 
+//     double factor = - (All.G*NFW_M200)/( log( 1 + NFW_C ) - NFW_C/(1 + NFW_C) ); 
+//     double derivative = (r - (r + Rhalo)*log(1 + r/Rhalo))/(r*r * (r + Rhalo));
+//     acc[0] += factor*derivative*dx/r;
+//     acc[1] += factor*derivative*dy/r;
+//     acc[2] += factor*derivative*dz/r;
+// #ifdef EVALPOTENTIAL
+//     *pot += - (All.G * NFW_M200)*log(1 + r/Rhalo) / ( r * (log( 1 + NFW_C ) - NFW_C/(1 + NFW_C))  );
+// #endif
+  
+//   }
+// #endif /* #if defined(CGOLSNFW) && defined(STATICNFW) */
+
+#if defined(STATICNFW) // Alternative: Instead of making the CGOLs potential our NFW in Arepo, make the STATICNFW
   {
     double r, m;
     double dx, dy, dz;
-
-    dx = pos[0] - boxHalf_X;
-    dy = pos[1] - boxHalf_Y;
-    dz = pos[2] - boxHalf_Z;
+    double deviation = 1e-8; // in case we have r = 0 at the center
+    dx = pos[0] - boxHalf_X + deviation;
+    dy = pos[1] - boxHalf_Y + deviation;
+    dz = pos[2] - boxHalf_Z + deviation;
 
     r = sqrt(dx * dx + dy * dy + dz * dz);
+    //printf("r for NFW: %f\n", r);
     m = enclosed_mass(r);
 #ifdef NFW_DARKFRACTION
     m *= NFW_DARKFRACTION;
@@ -207,8 +246,40 @@ static void gravity_external_get_force(double pos[3], int type, MyIDType ID, dou
         acc[1] += -All.G * m * dy / (r * r * r);
         acc[2] += -All.G * m * dz / (r * r * r);
       }
+#ifdef EVALPOTENTIAL // a=−GM​/r^3 (xi^+yj^​+zk^) => = U = −GM​x/(r^3)dx + −GM​x/(r^3)dx + −GM​x/(r^3)dx 
+      // F = -dU/dx, U = -F
+    *pot += (-All.G * m) / r;
+#endif /* #ifdef EVALPOTENTIAL */
   }
-#endif /* #ifdef STATICNFW */
+#endif /* #if defined(STATICNFW) */
+
+#ifdef STELLARDISK // Based on the Miyamoto-Nagai profile.
+  {
+    double deviation = 1e-8;
+    double dx, dy, dz;
+
+    dx = pos[0] - boxHalf_X + deviation;
+    dy = pos[1] - boxHalf_Y + deviation;
+    dz = pos[2] - boxHalf_Z + deviation;
+
+    double Z = R_stars + sqrt(dz*dz + z_stars*z_stars);
+    double r = sqrt(dx * dx + dy * dy); 
+
+    // acc[0] += -All.G * M_stars * r / ( pow( (r*r + Z*Z) , 3/2) ) * cos(theta);
+    acc[0] += -All.G * M_stars * r / ( pow( (r*r + Z*Z) , 3.0/2.0) ) * (dx/r);
+    // acc[1] += -All.G * M_stars * r / ( pow( (r*r + Z*Z) , 3/2) ) * sin(theta);
+    acc[1] += -All.G * M_stars * r / ( pow( (r*r + Z*Z) , 3.0/2.0) ) * (dy/r);
+    // calculate -d_z(Phi)
+    acc[2] += -All.G * M_stars * dz * Z / ( sqrt( z_stars*z_stars + dz*dz ) * pow( (r*r + Z*Z) , 3.0/2.0) );
+
+#ifdef EVALPOTENTIAL // a=−GM​/r^3 (xi^+yj^​+zk^) => = U = −GM​x/(r^3)dx + −GM​x/(r^3)dx + −GM​x/(r^3)dx 
+    // F = -dU/dx, U = -F
+    *pot += - All.G * M_stars /(sqrt(r * r + Z*Z ));
+#endif /* #ifdef EVALPOTENTIAL */
+
+  }
+#endif /* #ifdef STELLARDISK */
+
 
 #ifdef STATICHQ
   {
@@ -262,7 +333,7 @@ void gravity_monopole_1d_spherical()
 
       P[i].GravAccel[0] = -(msum + dm) * All.G / (rad * rad);
 
-#ifdef EVALPOTENTIAL
+#ifdef EVALPOTENTIAL // does not run because I am not running on 1d
       P[i].Potential = -(msum + dm) * All.G / rad;
 #endif /* #ifdef EVALPOTENTIAL */
 
@@ -289,7 +360,6 @@ double enclosed_mass(double R)
 
   if(R > Rs * NFW_C)
     R = Rs * NFW_C;
-
   return fac * 4 * M_PI * RhoCrit * Dc *
          (-(Rs * Rs * Rs * (1 - NFW_Eps + log(Rs) - 2 * NFW_Eps * log(Rs) + NFW_Eps * NFW_Eps * log(NFW_Eps * Rs))) /
               ((NFW_Eps - 1) * (NFW_Eps - 1)) +
@@ -314,7 +384,7 @@ void calc_exact_gravity_for_particle_type(void)
   accx = (double *)mymalloc("accx", All.MaxPartSpecial * sizeof(double));
   accy = (double *)mymalloc("accy", All.MaxPartSpecial * sizeof(double));
   accz = (double *)mymalloc("accz", All.MaxPartSpecial * sizeof(double));
-#ifdef EVALPOTENTIAL
+#ifdef EVALPOTENTIAL // not going to run because I don't have EXACT_GRAVITY_FOR_PARTICLE_TYPE on
   double *pot;
   pot = (double *)mymalloc("pot", All.MaxPartSpecial * sizeof(double));
 #endif /* #ifdef EVALPOTENTIAL */
@@ -322,7 +392,7 @@ void calc_exact_gravity_for_particle_type(void)
   for(n = 0; n < All.MaxPartSpecial; n++)
     {
       accx[n] = accy[n] = accz[n] = 0.0;
-#ifdef EVALPOTENTIAL
+#ifdef EVALPOTENTIAL // not going to run because I don't have EXACT_GRAVITY_FOR_PARTICLE_TYPE on
       pot[n] = 0.0;
 #endif /* #ifdef EVALPOTENTIAL */
     }
@@ -383,7 +453,7 @@ void calc_exact_gravity_for_particle_type(void)
           P[i].GravAccel[1] -= All.G * PartSpecialListGlobal[k].mass * fac * dy;
           P[i].GravAccel[2] -= All.G * PartSpecialListGlobal[k].mass * fac * dz;
 
-#ifdef EVALPOTENTIAL
+#ifdef EVALPOTENTIAL // not going to run because I don't have EXACT_GRAVITY_FOR_PARTICLE_TYPE on
           P[i].Potential += All.G * PartSpecialListGlobal[k].mass * wp;
 #endif /* #ifdef EVALPOTENTIAL */
 #ifdef EXACT_GRAVITY_REACTION
@@ -393,7 +463,7 @@ void calc_exact_gravity_for_particle_type(void)
               accx[k] += All.G * P[i].Mass * fac * dx;
               accy[k] += All.G * P[i].Mass * fac * dy;
               accz[k] += All.G * P[i].Mass * fac * dz;
-#ifdef EVALPOTENTIAL
+#ifdef EVALPOTENTIAL // not going to run because I don't have EXACT_GRAVITY_FOR_PARTICLE_TYPE on
               pot[k] += All.G * P[i].Mass * wp;
 #endif /* #ifdef EVALPOTENTIAL */
             }
@@ -412,7 +482,7 @@ void calc_exact_gravity_for_particle_type(void)
   MPI_Allreduce(accz, buf, All.MaxPartSpecial, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   for(n = 0; n < All.MaxPartSpecial; n++)
     accz[n] = buf[n];
-#ifdef EVALPOTENTIAL
+#ifdef EVALPOTENTIAL // // not going to run because I don't have EXACT_GRAVITY_REACTION on
   MPI_Allreduce(pot, buf, All.MaxPartSpecial, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   for(n = 0; n < All.MaxPartSpecial; n++)
     pot[n] = buf[n];
@@ -431,14 +501,14 @@ void calc_exact_gravity_for_particle_type(void)
               P[i].GravAccel[0] += accx[n];
               P[i].GravAccel[1] += accy[n];
               P[i].GravAccel[2] += accz[n];
-#ifdef EVALPOTENTIAL
+#ifdef EVALPOTENTIAL // not going to run because I don't have EXACT_GRAVITY_FOR_PARTICLE_TYPE on
               P[i].Potential += pot[n];
 #endif /* #ifdef EVALPOTENTIAL */
             }
         }
     }
 
-#ifdef EVALPOTENTIAL
+#ifdef EVALPOTENTIAL //not going to run because I don't have EXACT_GRAVITY_FOR_PARTICLE_TYPE on
   myfree(pot);
 #endif /* #ifdef EVALPOTENTIAL */
   myfree(accz);

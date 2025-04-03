@@ -120,7 +120,12 @@ void set_pressure_of_cell(int i) { set_pressure_of_cell_internal(P, SphP, i); }
 void set_pressure_of_cell_internal(struct particle_data *localP, struct sph_particle_data *localSphP, int i)
 {
 #ifdef ISOTHERM_EQS
+#ifdef ISOTHERM_EQS_KEEP_INIT
+  localSphP[i].Pressure = localSphP[i].Density * localSphP[i].initial_cs * localSphP[i].initial_cs; 
+  // TODO -> Test this.
+#else /* #ifdef ISOTHERM_EQS_KEEP_INIT */
   localSphP[i].Pressure = localSphP[i].Density * All.IsoSoundSpeed * All.IsoSoundSpeed;
+#endif /* #ifdef ISOTHERM_EQS_KEEP_INIT */
 #else  /* #ifdef ISOTHERM_EQS */
 
   if(localSphP[i].Utherm >= 0)
@@ -229,7 +234,7 @@ void update_primitive_variables_single(struct particle_data *localP, struct sph_
  */
 void update_internal_energy(struct particle_data *localP, struct sph_particle_data *localSphP, int i, struct pv_update_data *pvd)
 {
-#ifndef ISOTHERM_EQS
+#ifndef ISOTHERM_EQS // do not change this..
   double ulimit;
 
   if(localP[i].Mass > 0)
@@ -317,7 +322,12 @@ double get_sound_speed(int p)
   double csnd;
 
 #ifdef ISOTHERM_EQS
+#ifdef ISOTHERM_EQS_KEEP_INIT
+  csnd = SphP[p].initial_cs;
+#else
   csnd = All.IsoSoundSpeed;
+#endif
+
 #else  /* #ifdef ISOTHERM_EQS */
 
   double gamma;

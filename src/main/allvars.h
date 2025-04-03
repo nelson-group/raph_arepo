@@ -886,6 +886,19 @@ extern struct global_data_all_processes
                      processor. */
   int MaxPartSph; /*!< This gives the maxmimum number of SPH particles that can be stored on one
                      processor. */
+                     
+#ifdef INJECT_WITHIN_RADIUS
+  double sfr;
+  double M_load; // beta 
+  double E_load; // alpha
+  double injection_radius; // injection radius
+  double burst_duration;
+  double time_between_bursts;
+  double start_of_burst;
+  double end_of_burst;
+  double injected;
+
+#endif
 
 #if defined(COOLING)
   char TreecoolFile[MAXLEN_PATH];
@@ -1208,6 +1221,7 @@ extern struct global_data_all_processes
 #endif /* #ifdef ONEDIMS_SPHERICAL */
 
   double GlobalDisplacementVector[3];
+
 } All;
 
 /*****************************************************************************
@@ -1332,6 +1346,10 @@ extern struct sph_particle_data
   MyFloat Density;
   MyFloat Pressure; /*!< current pressure */
   MySingle Utherm;
+
+#ifdef ISOTHERM_EQS_KEEP_INIT
+  MyFloat initial_cs; // the initial sound speed
+#endif /* #ifdef ISOTHERM_EQS_KEEP_INIT */
 
 #ifdef HIERARCHICAL_GRAVITY
   MySingle FullGravAccel[3];

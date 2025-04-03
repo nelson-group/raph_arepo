@@ -381,9 +381,9 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 
 #ifdef NODEREFINE_BACKGROUND_GRID
-      strcpy(tag[nt], "MeanVolume");
-      addr[nt] = &All.MeanVolume;
-      id[nt++] = REAL;
+      // strcpy(tag[nt], "MeanVolume");
+      // addr[nt] = &All.MeanVolume;
+      // id[nt++] = REAL;
 #endif /* #ifdef NODEREFINE_BACKGROUND_GRID */
 
 #ifndef VORONOI_STATIC_MESH
@@ -425,6 +425,46 @@ void read_parameter_file(char *fname)
       addr[nt] = &All.DerefinementCriterion;
       id[nt++] = INT;
 #endif /* #if defined(REFINEMENT) */
+
+#ifdef INJECT_WITHIN_RADIUS
+/*
+      strcpy(tag[nt], "MaxVolumeDiff");
+      addr[nt] = &All.MaxVolumeDiff;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "MinVolume");
+      addr[nt] = &All.MinVolume;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "MaxVolume");
+      addr[nt] = &All.MaxVolume;
+      id[nt++] = REAL;
+*/
+      strcpy(tag[nt], "sfr");
+      addr[nt] = &All.sfr;
+      id[nt++] = REAL;
+
+      strcpy(tag[nt], "M_load");
+      addr[nt] = &All.M_load;
+      id[nt++] = REAL;    
+
+      strcpy(tag[nt], "E_load");
+      addr[nt] = &All.E_load;
+      id[nt++] = REAL;  
+
+      strcpy(tag[nt], "injection_radius");
+      addr[nt] = &All.injection_radius;
+      id[nt++] = REAL;  
+
+      strcpy(tag[nt], "burst_duration");
+      addr[nt] = &All.burst_duration;
+      id[nt++] = REAL;  
+      
+      strcpy(tag[nt], "time_between_bursts");
+      addr[nt] = &All.time_between_bursts;
+      id[nt++] = REAL;  
+
+#endif
 
 #ifdef USE_SFR
       strcpy(tag[nt], "CritOverDensity");

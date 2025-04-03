@@ -131,7 +131,7 @@ gsl_rng *random_generator_aux; /*!< an auxialiary random number generator for us
 
 #ifdef USE_SFR
 int Stars_converted; /*!< current number of star particles in gas particle block */
-#endif
+#endif /* #ifdef USE_SFR */
 
 #ifdef TOLERATE_WRITE_ERROR
 int WriteErrorFlag;

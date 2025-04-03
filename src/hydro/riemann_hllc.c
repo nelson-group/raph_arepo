@@ -118,6 +118,7 @@ static double get_hllc_star_fluxes(const struct state *st, const struct fluxes *
  */
 double godunov_flux_3d_hllc(struct state *st_L, struct state *st_R, struct state_face *st_face, struct fluxes *flux)
 {
+  // printf("CALLING godunov_flux_3d_hllc\n");
   double S_L, S_R, S_star;
   double Press_star, rho_star;
   double rho_hat, csnd_hat;
@@ -128,20 +129,30 @@ double godunov_flux_3d_hllc(struct state *st_L, struct state *st_R, struct state
 
       st_L->csnd = sqrt(GAMMA * st_L->press / st_L->rho);
       st_R->csnd = sqrt(GAMMA * st_R->press / st_R->rho);
-
+      // printf("Initializing left state st_L->csnd %e, right state st_R->csnd %e\n", st_L->csnd, st_R->csnd);
       /* first estimate wave speeds */
+      // printf("Making first estimations of wave speeds\n");
       S_L = dmin(st_L->velx - st_L->csnd, st_R->velx - st_R->csnd);
+     // printf("S_L %e\n", S_L);
       S_R = dmax(st_L->velx + st_L->csnd, st_R->velx + st_R->csnd);
-
+      // printf("S_R %e\n", S_R);
       rho_hat    = 0.5 * (st_L->rho + st_R->rho);
       csnd_hat   = 0.5 * (st_L->csnd + st_R->csnd);
+      // printf("st_L->rho: %e, st_R->rho %e\n", st_L->rho, st_R->rho);
+      // printf("st_L->csnd: %e, st_R->csnd %e\n", st_L->csnd, st_R->csnd);
+      // printf("st_L->press: %e, st_R->press %e\n", st_L->press, st_R->press);
+      // printf("st_L->velx: %e, st_R->velx %e\n", st_L->velx, st_R->velx);
+      // printf("rho_hat> %e\n", rho_hat);
+      // printf("csnd_hat: %e\n", csnd_hat);
       Press_star = 0.5 * ((st_L->press + st_R->press) + (st_L->velx - st_R->velx) * (rho_hat * csnd_hat));
       S_star     = 0.5 * ((st_L->velx + st_R->velx) + (st_L->press - st_R->press) / (rho_hat * csnd_hat));
-
+      // printf("first estimate of press_star: %e\n", Press_star);
       /* compute fluxes for the left and right states */
       hllc_get_fluxes_from_state(st_L, &flux_L);
+      // printf("printing pressure from hllc_get_fluxes_from_state(st_L, &flux_L): %e\n",st_L->press);
       hllc_get_fluxes_from_state(st_R, &flux_R);
-
+      // printf("printing pressure from hllc_get_fluxes_from_state(st_R, &flux_R): %e\n",st_R->press);
+      
       if(S_L >= 0.0) /* F_hllc = F_L */
         {
           /* copy the fluxes from the left state */
@@ -206,6 +217,17 @@ double godunov_flux_3d_hllc(struct state *st_L, struct state *st_R, struct state
       terminate("density is zero\n");
       return 0;
     }
+
+  if (st_face->press < 0)
+  {
+    printf("Press_star before crash, %e\n", Press_star);
+    printf("st_L->press before crash, %e\n", st_L->press);
+    printf("st_R->press before crash, %e\n", st_R->press);
+    printf("st_L->velx before crash, %e\n", st_L->velx);
+    printf("st_R->velx before crash, %e\n", st_R->velx);
+    printf("rho_hat before crash, %e\n", rho_hat);
+    printf("csnd_hat before crash, %e\n", csnd_hat); 
+  }
 
   return st_face->press;
 }

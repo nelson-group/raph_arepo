@@ -348,6 +348,36 @@ void set_non_standard_physics_for_current_time(void)
 #if defined(COOLING)
   IonizeParams(); /* set UV background for the current time */
 #endif            /* #if defined(COOLING) */
+
+#if defined(DISK_RELAX)
+  for (int i = 0; i < NumGas; i++)
+  {
+    if (P[i].ID != 0 ) // if the particle is not derefined.
+    {
+      double rad_i = P[i].Pos[0] - 0.5*All.BoxSize - All.GlobalDisplacementVector[0];
+      double rad_j = P[i].Pos[1] - 0.5*All.BoxSize - All.GlobalDisplacementVector[1];
+      double rad_k = P[i].Pos[2] - 0.5*All.BoxSize - All.GlobalDisplacementVector[2];
+      double rad_xy = sqrt(pow(rad_i,2) + pow(rad_j,2));
+      double radius = sqrt(pow(rad_i,2) + pow(rad_j,2) + pow(rad_k,2));
+      if (rad_xy >= 3.05*R_stars || rad_k >= z_stars*4.05)
+      {
+        double factor = rad_xy/(3.05*R_stars);
+        if (factor < 1)
+          factor = 1.001;
+
+        double KE_old = 0.5 * P[i].Mass * (P[i].Vel[0] * P[i].Vel[0] + P[i].Vel[1] * P[i].Vel[1] + P[i].Vel[2] * P[i].Vel[2]);
+
+        P[i].Vel[0] = P[i].Vel[0]/factor;
+        P[i].Vel[1] = P[i].Vel[1]/factor;
+        P[i].Vel[2] = P[i].Vel[2]/factor;
+
+        double KE_new = 0.5 * P[i].Mass * (P[i].Vel[0] * P[i].Vel[0] + P[i].Vel[1] * P[i].Vel[1] + P[i].Vel[2] * P[i].Vel[2]);
+        double dKE = KE_new - KE_old; // this is always negative because the velocity is decreased.
+        SphP[i].Energy += dKE; // keep the Utherm the same
+      }
+    }
+  }
+#endif /* #if defined(DISK_RELAX) */
 }
 
 /*! \brief calls extra modules after the gravitational force is recomputed.
@@ -398,6 +428,143 @@ void calculate_non_standard_physics_end_of_step(void)
   cooling_only();
 #endif /* #ifdef USE_SFR #else */
 #endif /* #ifdef COOLING */
+
+#ifdef INJECT_WITHIN_RADIUS
+  double M_dot_wind = All.sfr*All.M_load; // solar masses/year
+  double E_dot_wind = All.E_load*3e41*All.sfr; //  ergs/second
+  double s_in_yr = 3.154e+7;
+  double grams_in_M_sun = 1.989e33;
+  double M_dot_code = M_dot_wind/(All.UnitMass_in_g/grams_in_M_sun)*(All.UnitTime_in_s/s_in_yr); // [solar masses/year] *  UnitMass_in_g/solar masses * seconds_in_year/All.UnitTime_in_s
+  double E_dot_code = E_dot_wind/All.UnitEnergy_in_cgs*All.UnitTime_in_s; // [ergs/second]* UnitEnergy/ergs * seconds/Unit Time
+
+  int n_inject = 0; // the number of gas cells in the injection region for the LOCAL Processor
+  int n_inject_global = 0; // the number of gas cells in the region for ALL Processors
+  // Note: variable size arrays cannot be set in C...
+
+  if (All.Time == 0){
+    All.start_of_burst = 0;
+    All.end_of_burst = All.burst_duration;
+    All.injected = 0;
+  }
+  for (int i = 0; i < NumGas; i++)  
+  { 
+    if (P[i].ID != 0) // if the particle is not derefined -> Cells are deleted, but its still in SphP and in NumGas. 
+    {
+      double rad_i = P[i].Pos[0] - 0.5*All.BoxSize - All.GlobalDisplacementVector[0]; 
+      double rad_j = P[i].Pos[1] - 0.5*All.BoxSize - All.GlobalDisplacementVector[1];
+      double rad_k = P[i].Pos[2] - 0.5*All.BoxSize - All.GlobalDisplacementVector[2];
+      double radius = sqrt(pow(rad_i,2) + pow(rad_j,2) + pow(rad_k,2));
+      if (radius <= All.injection_radius) // if it is less or equal to the injection radius
+        n_inject++; // increment n_inject by 1
+    }
+  }
+  // IMPORTANT: Sum up the n_inject of each processor to get a global injection number.
+  /* NOTES TO SELF:
+    The following are already included in main.c. No need to set them up
+      MPI_Init(&argc, &argv);
+      MPI_Comm_rank(MPI_COMM_WORLD, &ThisTask);
+      MPI_Comm_size(MPI_COMM_WORLD, &NTask);
+
+    MPI_Gather is the inverse of MPI_Scatter and takes elements from each process
+    to put them into the local process(a many-to-one communication process). My current values are:
+    MPI_Gather(
+      void* send_data, // the address of the data being sent: &n_inject
+      int send_count, // how many elements are we sending over to other processors: 1
+      MPI_Datatype send_datatype, // The datatype being sent: MPI_INT
+      void* recv_data, // the address of the data being recieved by the other processors:  n_globals
+      int recv_count, // number of elements in recv with that have datatype of MPI_Datatype send_datatype: 1
+      MPI_Datatype recv_datatype, // The datatype being recieved: MPI_INT
+      int root, // root processor: NTask
+      MPI_Comm communicator); // The communicator
+    For Arepo, we need to make sure every processor knows, otherwise all the information is being sent to one processor and they're all waiting for ThisTask to get to it. Hence the 
+    lag.
+    MPI_Allgather(
+      void* send_data, // the address of the data being sent: &n_inject
+      int send_count, // how many elements are we sending over to other processors: 1
+      MPI_Datatype send_datatype, // The datatype being sent: MPI_INT
+      void* recv_data, // the address of the data being recieved by the other processors:  n_globals
+      int recv_count, // number of elements in recv with that have datatype of MPI_Datatype send_datatype: 1
+      MPI_Datatype recv_datatype, // The datatype being recieved: MPI_INT
+      MPI_Comm communicator); // The communicator  
+
+      */
+ /*
+      Grab all the n_injects of each NTask using MPI_Gather, then sum it. Rinse and repeat across every processor. 
+ */
+  int * n_globals = NULL; // first declare n_globals pointer
+  n_globals = malloc(sizeof(int) * NTask); // allocate space for buffer. 
+  MPI_Allgather(&n_inject, 1, MPI_INT, n_globals, 1, MPI_INT, MPI_COMM_WORLD); // shoves n_inject into n_globals
+  for (size_t i = 0; i < NTask; i++)
+    n_inject_global += n_globals[i];
+  free(n_globals);
+
+  if (All.time_between_bursts == 0) // constant injection
+  {
+    for (int i = 0; i < NumGas; i++)
+    {
+      if (P[i].ID != 0)
+      {
+        double rad_i = P[i].Pos[0] - 0.5*All.BoxSize - All.GlobalDisplacementVector[0];
+        double rad_j = P[i].Pos[1] - 0.5*All.BoxSize - All.GlobalDisplacementVector[1];
+        double rad_k = P[i].Pos[2] - 0.5*All.BoxSize - All.GlobalDisplacementVector[2];
+        double radius = sqrt(pow(rad_i,2) + pow(rad_j,2) + pow(rad_k,2));
+        if (radius <= All.injection_radius) // for every radius that is less than the injection radius
+        {   
+          P[i].Mass += (M_dot_code * (All.TimeStep))/n_inject_global; 
+          SphP[i].Energy += (E_dot_code * (All.TimeStep))/n_inject_global; 
+        }
+      }
+    }
+  }
+  else 
+  {
+    if (All.Time > All.end_of_burst)
+    {
+      if (All.injected == 0) // if we have not injected anything during our burst duration
+      {
+        for (int i = 0; i < NumGas; i++)
+        {
+          if (P[i].ID != 0) // if the particle is not derefined.
+          {
+            double rad_i = P[i].Pos[0] - 0.5*All.BoxSize - All.GlobalDisplacementVector[0];
+            double rad_j = P[i].Pos[1] - 0.5*All.BoxSize - All.GlobalDisplacementVector[1];
+            double rad_k = P[i].Pos[2] - 0.5*All.BoxSize - All.GlobalDisplacementVector[2];
+            double radius = sqrt(pow(rad_i,2) + pow(rad_j,2) + pow(rad_k,2));
+            if (radius <= All.injection_radius) // for every radius that is less than the injection radius
+            {   
+              P[i].Mass += (M_dot_code * (All.end_of_burst - All.start_of_burst))/n_inject_global; // all.burst_duration
+              SphP[i].Energy += (E_dot_code * (All.end_of_burst - All.start_of_burst))/n_inject_global; 
+            }
+          }
+        }
+        // All.injected = 1; 
+      }
+      // All.start_of_burst += All.time_between_bursts; 
+      // All.end_of_burst += All.time_between_bursts;
+      // All.injected = 0;
+    }
+
+    if (All.Time >= All.start_of_burst && All.Time <= All.end_of_burst) 
+    {
+      for (int i = 0; i < NumGas; i++)
+      {
+        if (P[i].ID != 0) // if the particle is not derefined.
+        {
+          double rad_i = P[i].Pos[0] - 0.5*All.BoxSize - All.GlobalDisplacementVector[0];
+          double rad_j = P[i].Pos[1] - 0.5*All.BoxSize - All.GlobalDisplacementVector[1];
+          double rad_k = P[i].Pos[2] - 0.5*All.BoxSize - All.GlobalDisplacementVector[2];
+          double radius = sqrt(pow(rad_i,2) + pow(rad_j,2) + pow(rad_k,2));
+          if (radius <= All.injection_radius) // for every radius that is less than the injection radius
+          {   
+              P[i].Mass += (M_dot_code * (All.TimeStep))/n_inject_global; 
+              SphP[i].Energy += (E_dot_code * (All.TimeStep))/n_inject_global; 
+          }
+        }      
+      }
+      All.injected = 1;
+    }
+  }  
+#endif /* #ifdef INJECT_WITHIN_RADIUS */ 
 }
 
 /*! \brief Checks whether the run must interrupted.

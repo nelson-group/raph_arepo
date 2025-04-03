@@ -336,6 +336,13 @@ integertime get_timestep_gravity(int p)
       dt = All.MinSizeTimestep;
 #else  /* #ifdef NOSTOP_WHEN_BELOW_MINTIMESTEP */
       print_particle_info(p);
+      printf("All.ErrTolIntAccuracy %f, All.cf_atime %f, All.ForceSoftening[P[p].SofteningType] %f, ac %f\n", All.ErrTolIntAccuracy, All.cf_atime, All.ForceSoftening[P[p].SofteningType], ac );
+      double boxhalf = All.BoxSize/2;
+      double dx = P[p].Pos[0] - boxhalf;
+      double dy = P[p].Pos[1] - boxhalf;
+      double dz = P[p].Pos[2] - boxhalf;
+      double r = sqrt(dx * dx + dy * dy + dz * dz);
+      printf("All.cf_a2inv %f,  P[p].GravAccel[1] %f, r %f\n", All.cf_a2inv, P[p].GravAccel[1], r);
       terminate("Timestep dt=%g below All.MinSizeTimestep=%g", dt, All.MinSizeTimestep);
 #endif /* #ifdef NOSTOP_WHEN_BELOW_MINTIMESTEP #else */
     }
@@ -458,6 +465,7 @@ void validate_timestep(double dt, integertime ti_step, int p)
 {
   if(!(ti_step > 0 && ti_step < TIMEBASE))
     {
+
       printf(
           "\nError: An invalid timestep was assigned on the integer timeline!\n"
           "We better stop.\n"

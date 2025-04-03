@@ -276,7 +276,10 @@ int do_refinements(void)
                            pow(DeRefMesh.DP[DeRefMesh.Ndp].z - P[i].Pos[2], 2));
 
                   if(r < 2 * fac)
+                  {
+                    print_particle_info(P[i].ID);
                     terminate("We are trying to split a heavily distorted cell... We better stop. Check your refinement criterion.");
+                  }
 
 #ifndef OPTIMIZE_MEMORY_USAGE
                   set_integers_for_point(&DeRefMesh, DeRefMesh.Ndp);

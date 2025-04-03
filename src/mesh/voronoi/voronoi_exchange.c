@@ -217,6 +217,7 @@ void mesh_setup_exchange(void)
  */
 void exchange_primitive_variables(void)
 {
+  // printf("starting exchange of primitive variables \n");
   if(All.TotNumGas == 0)
     return;
 

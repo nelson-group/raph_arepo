@@ -115,7 +115,7 @@ static struct flux_list_data
   double dB[3];
 #endif /* #ifdef MHD */
 
-#ifndef ISOTHERM_EQS
+#ifndef ISOTHERM_EQS // put the same line 
   double dEnergy;
 #endif /* #ifndef ISOTHERM_EQS */
 
@@ -892,6 +892,8 @@ static void derefine_apply_flux_list(void)
           char buf[1000];
 #ifndef LONGIDS
           printf("On task=%d flux to ID=%d, but this is already deleted (index p=%d)\n", ThisTask, P[p].ID, p);
+          printf("printing particle information:\n");
+          print_particle_info(P[p].ID);
 #else  /* #ifndef LONGIDS */
           printf("On task=%d flux to ID=%llu, but this is already deleted (index p=%d)\n", ThisTask, P[p].ID, p);
 #endif /* #ifndef LONGIDS #else */

@@ -62,8 +62,10 @@
  */
 void domain_resize_storage(int count_get, int count_get_sph, int option_flag)
 {
-  int load        = NumPart + count_get;
+  int load        = NumPart + count_get; 
+  // printf("domain_exchange.c - domain_resize_storage:  load(Number of particles on the LOCAL processor + How many particles are imported ) %i \n", load);
   int sphload     = NumGas + count_get_sph;
+  // printf("domain_exchange.c - sphload: Number of gass particles on the LOCAL processor + How many cells are imported %i \n", sphload);
   int loc_data[2] = {load, sphload}, res[2];
 
   MPI_Allreduce(loc_data, res, 2, MPI_INT, MPI_MAX, MPI_COMM_WORLD);

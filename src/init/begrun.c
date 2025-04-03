@@ -310,7 +310,11 @@ void set_units(void)
   R200    = pow(NFW_M200 * All.G / (100 * All.Hubble * All.Hubble), 1.0 / 3);
   Rs      = R200 / NFW_C;
   Dc      = 200.0 / 3 * NFW_C * NFW_C * NFW_C / (log(1 + NFW_C) - NFW_C / (1 + NFW_C));
+  mpi_printf("Dc %f\n", Dc);
+  mpi_printf("Denominator %f\n", 1/(log(1 + NFW_C) - NFW_C / (1 + NFW_C)));
   RhoCrit = 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G);
+  mpi_printf("RhoCrit %f\n", RhoCrit);
+  mpi_printf("R200 %f\n", R200);
   V200    = 10 * All.Hubble * R200;
   mpi_printf("V200= %g\n", V200);
 

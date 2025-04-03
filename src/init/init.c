@@ -547,6 +547,17 @@ int init(void)
     SphP[i].Sfr = get_starformation_rate(i);
 #endif /* #if defined(USE_SFR) */
 
+
+#if defined(ISOTHERM_EQS_KEEP_INIT)
+  for (i = 0; i < NumGas; i++)
+  {
+    double xe = 1; // electron abundance
+    double mean_molecular_weight = 4.0/(1+3*HYDROGEN_MASSFRAC + 4*HYDROGEN_MASSFRAC*xe)*PROTONMASS;
+    double cell_temperature = (GAMMA - 1) * SphP[i].Utherm * All.UnitEnergy_in_cgs/All.UnitMass_in_g * mean_molecular_weight / BOLTZMANN;
+    SphP[i].initial_cs = sqrt(BOLTZMANN * cell_temperature / (mean_molecular_weight))/All.UnitVelocity_in_cm_per_s; // the initial sound speed within the cell. RESULTS MATCH ANALTIICALLY EXPECTED VALUES
+  }
+
+#endif /* #if defined(ISOTHERM_EQS_KEEP_INIT) */
   update_primitive_variables();
 
   exchange_primitive_variables();

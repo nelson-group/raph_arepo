@@ -91,7 +91,7 @@ double godunov_flux_3d(struct state *st_L, struct state *st_R, struct state_face
 {
   double Vel;
 
-#ifndef ISOTHERM_EQS
+#if !defined(ISOTHERM_EQS) || (defined(ISOTHERM_EQS) && defined(ISOTHERM_EQS_KEEP_INIT)) // The riemann solver can determine everything by itself.
   {
     if(st_L->press == 0 && st_R->press == 0)
       {
@@ -163,7 +163,7 @@ double godunov_flux_3d(struct state *st_L, struct state *st_R, struct state_face
       }
   }
 
-#else  /* #ifndef ISOTHERM_EQS */
+#else  /* #ifndef ISOTHERM_EQS */  // ie. we have defined ISOTHERM_EQS but not ISOTHERM_EQS_KEEP_INIT
   double Rho;
   double csnd;
 

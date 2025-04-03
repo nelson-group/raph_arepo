@@ -87,6 +87,21 @@ HWLOC_INCL=
 endif
 # end of Ubuntu
 
+# Vera
+ifeq ($(SYSTYPE),"VERA")
+CC       =  mpiicc
+OPTIMIZE =  -std=c11 -march=native -g -O3 -ipo
+GSL_INCL =  -I$(GSL_HOME)/include/
+GSL_LIB  =  -L$(GSL_HOME)/lib/ -lgsl -lgslcblas
+FFTW_INCL=  -I$(FFTW_HOME)/include/
+FFTW_LIBS=  -L$(FFTW_HOME)/lib/
+HWLOC_INCL =
+HWLOC_LIB = -lhwloc
+MPICH_LIB =
+HDF5_INCL =  -DH5_USE_16_API=1 -I$(HDF5_HOME)/include/
+HDF5_LIB  =  -lhdf5 -L$(HDF5_HOME)/lib/ -lz
+endif
+# end of Vera
 
 # insert the library paths for your system here, similar to SYSTYPE "Darwin" above
 
