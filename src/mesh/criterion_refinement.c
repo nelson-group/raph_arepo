@@ -77,22 +77,11 @@
    double maxvolume = All.MaxVolume;
    double minvolume = All.MinVolume;
 
-
-   double rad_i = P[i].Pos[0] - 0.5*All.BoxSize - All.GlobalDisplacementVector[0]; 
-   double rad_j = P[i].Pos[1] - 0.5*All.BoxSize - All.GlobalDisplacementVector[1];
-   double rad_k = P[i].Pos[2] - 0.5*All.BoxSize - All.GlobalDisplacementVector[2];    
-   double radius = sqrt(pow(rad_i,2) + pow(rad_j,2) + pow(rad_k,2));
-
-   /* 
-    radius <= 5sqrt(3) doesn't work. and I'm not sure that it's a good idea anyways
-    I think the similar option is to increase the factor of max volume
-   */
-
-   if ( (SphP[i].Volume > 2. * maxvolume) // &&  (radius <= 5*sqrt(3))) // I want volume refinement to only work inside the inner box. 
+   if (SphP[i].Volume > 2. * maxvolume) 
      if(can_this_cell_be_split(i))
        return 1;
  
-   if(SphP[i].Volume < 2. * minvolume) // || ( (abs(rad_i) >= 5) && (abs(rad_j) >= 5) && (abs(rad_k) >=5)  &&  SphP[i].Volume >= All.MeanVolume*5)
+   if(SphP[i].Volume < 2. * minvolume) 
      return 0;
   
      // refines cells based on whether or not the cell volume is greater a factor MaxVolDiff * (minimum neighboring cell volume).. Set to 0 to disable
@@ -117,7 +106,7 @@
          return refine_criterion_jeans_ref(i);
          break;
        
-       case 3:
+       case 3: // take this out of the param
          return refine_criterion_center_region(i);
          break;
 
