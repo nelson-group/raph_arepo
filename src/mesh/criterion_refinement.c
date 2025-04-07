@@ -48,7 +48,6 @@
  static int refine_criterion_default(int i);
  static int refine_criterion_jeans_ref(int i);
  static int jeans_refinement_criteria(int i);
- static int refine_criterion_center_region(int i);
  
  #ifdef REFINEMENT_VOLUME_LIMIT
  static int refine_criterion_volume(int i);
@@ -106,10 +105,6 @@
          return refine_criterion_jeans_ref(i);
          break;
        
-       case 3: // take this out of the param
-         return refine_criterion_center_region(i);
-         break;
-
        default:
          terminate("invalid refinement criterion specified");
          break;
@@ -165,9 +160,18 @@
  #ifdef REFINEMENT_HIGH_RES_GAS
    if(SphP[i].AllowRefinement != 0)
  #endif /* #ifdef REFINEMENT_HIGH_RES_GAS */
-     if(can_this_cell_be_split(i) && P[i].Mass > 2.0 * All.TargetGasMass)
-       return 1;
- 
+     if (can_this_cell_be_split(i))
+     {
+       if (P[i].Mass > 2.0 * All.TargetGasMass)
+         return 1;
+#if defined (INJECT_WITHIN_RADIUS) && defined (REFINEMENT_CENTER_REGION)
+      double radius = sqrt(pow(P[i].Pos[0] - 0.5*All.BoxSize - All.GlobalDisplacementVector[0],2) + 
+                     pow(P[i].Pos[1] - 0.5*All.BoxSize - All.GlobalDisplacementVector[1],2) + 
+                     pow(P[i].Pos[2] - 0.5*All.BoxSize - All.GlobalDisplacementVector[2],2));
+      if (radius <= 1.1*All.injection_radius && SphP[i].Volume > 3 * All.MeanVolume)
+        return 1;
+#endif 
+     }
    return 0; /* default is not to refine */
  }
  
@@ -231,45 +235,7 @@
    return 0;
  }
  
- 
- /*! \brief Criterion for refinement in the center region.
-  *
-  *  Requires INJECT_WITHIN_RADIUS
-  *  Contains the default refinement criterion as well as routine 
-  *  refining center cells within the twice the injection radius 
-  *  and 1.1 times the mean volume
-  *
-  *  \param[in] i Index of cell in P and SphP arrays.
-  *
-  *  \return Flag if this cell should be refined.
-  */
- static int refine_criterion_center_region(int i)
- {
-   if (!can_this_cell_be_split(i)) // check if this is happening(and where if possible)
-     return 0;
- 
- #ifdef REFINEMENT_HIGH_RES_GAS /* refinment rule for the mult-resolution simuations with both low res gas AND high res gas*/
-   if(SphP[i].AllowRefinement != 0)
- #endif /* #ifdef REFINEMENT_HIGH_RES_GAS */
-     if(P[i].Mass > 2.0 * All.TargetGasMass)
-       return 1;
-       
- #ifdef INJECT_WITHIN_RADIUS  
-     double rad_i = P[i].Pos[0] - 0.5*All.BoxSize - All.GlobalDisplacementVector[0]; 
-     double rad_j = P[i].Pos[1] - 0.5*All.BoxSize - All.GlobalDisplacementVector[1];
-     double rad_k = P[i].Pos[2] - 0.5*All.BoxSize - All.GlobalDisplacementVector[2];
-     double radius = sqrt(pow(rad_i,2) + pow(rad_j,2) + pow(rad_k,2));
-     if (radius <= 2*All.injection_radius && SphP[i].Volume > 1.1 * All.MeanVolume)
-     {
-       printf("Refining center cell\n");
-       return 1;
-     }
- #endif /*#if INJECT_WITHIN_RADIUS*/
- 
-   return 0; /* default is not to refine */
- }
- 
- 
+
  #ifdef REFINEMENT_VOLUME_LIMIT
  /*! \brief Refinement criterion for based on the minimum volume of a
   *  neighboring cell.

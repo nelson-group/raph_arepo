@@ -52,6 +52,7 @@
 #NODEREFINE_BACKGROUND_GRID    # Do not de-refine low-res gas cells in zoom simulations
 #OPTIMIZE_MESH_MEMORY_FOR_REFINEMENT  # deletes the mesh structures not needed for refinement/derefinemet to lower the peak memory consumption
 #EDGE_DEREFINEMENT             # Derefine edges if they are less than a certain volume.
+#REFINEMENT_CENTER_REGION      # Refine cells that are inside the injection region 
 
 #--------------------------------------- non-standard phyiscs
 #COOLING                       # Simple primordial cooling
