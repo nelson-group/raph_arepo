@@ -381,9 +381,9 @@ void read_parameter_file(char *fname)
       id[nt++] = REAL;
 
 #ifdef NODEREFINE_BACKGROUND_GRID
-      // strcpy(tag[nt], "MeanVolume");
-      // addr[nt] = &All.MeanVolume;
-      // id[nt++] = REAL;
+      strcpy(tag[nt], "MeanVolume");
+      addr[nt] = &All.MeanVolume;
+      id[nt++] = REAL;
 #endif /* #ifdef NODEREFINE_BACKGROUND_GRID */
 
 #ifndef VORONOI_STATIC_MESH

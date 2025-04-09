@@ -168,8 +168,12 @@
       double radius = sqrt(pow(P[i].Pos[0] - 0.5*All.BoxSize - All.GlobalDisplacementVector[0],2) + 
                      pow(P[i].Pos[1] - 0.5*All.BoxSize - All.GlobalDisplacementVector[1],2) + 
                      pow(P[i].Pos[2] - 0.5*All.BoxSize - All.GlobalDisplacementVector[2],2));
-      if (radius <= 1.1*All.injection_radius && SphP[i].Volume > 3 * All.MeanVolume)
+      if (radius <= 1.1*All.injection_radius && SphP[i].Volume > 1.0*All.MeanVolume)
+      {
+        // printf("Refining cell with a volume of %g. The mean volume of the simulation is given as %0.09g\n", SphP[i].Volume, All.MeanVolume);
+        // printf("Refining cell with the following positions: %g, %g, %g\n", P[i].Pos[0], P[i].Pos[1],P[i].Pos[2]);
         return 1;
+      }
 #endif 
      }
    return 0; /* default is not to refine */

@@ -51,16 +51,12 @@
 #REFINEMENT_HIGH_RES_GAS       # Refinement criterion for high-resolution region in zoom simulation
 #NODEREFINE_BACKGROUND_GRID    # Do not de-refine low-res gas cells in zoom simulations
 #OPTIMIZE_MESH_MEMORY_FOR_REFINEMENT  # deletes the mesh structures not needed for refinement/derefinemet to lower the peak memory consumption
-#EDGE_DEREFINEMENT             # Derefine edges if they are less than a certain volume.
-#REFINEMENT_CENTER_REGION      # Refine cells that are inside the injection region 
 
 #--------------------------------------- non-standard phyiscs
 #COOLING                       # Simple primordial cooling
 #ENFORCE_JEANS_STABILITY_OF_CELLS  # this imposes an adaptive floor for the temperature
 #USE_SFR                       # Star formation model, turning dense gas into collisionless partices
 #SFR_KEEP_CELLS                # Do not distroy cell out of which a star has formed
-#INJECT_WITHIN_RADIUS          # Turn on injection of mass and energy within a given injection radius
-#DISK_RELAX                    # Relaxes the Disk and floors tempearture and velocity for the duration of the simulation
 
 #--------------------------------------- Gravity treatment; default: no gravity
 #SELFGRAVITY                   # gravitational intraction between simulation particles/cells
@@ -93,12 +89,6 @@
 #--------------------------------------- External gravity; default: no external potential
 #EXTERNALGRAVITY               # master switch for external potential
 #EXTERNALGY=0.0                # constant external gravity in y direction
-
-#--------------------------------------- Stellar Disk Potential
-#STELLARDISK                   # potential of a stellar disk in cylindrical coordinates
-#M_stars=1e10                  # mass of the stellar disk
-#R_stars=0.8                   # Stellar scale radius
-#z_stars=0.15                  # stellar scale height
 
 #--------------------------------------- Static NFW Potential
 #CGOLSNFW                      # CGOLS NFW
@@ -231,3 +221,15 @@
 #--------------------------------------- Mesh-relaxing or mesh-adding (this will not carry out a simulation)
 #MESHRELAX                     # this keeps the mass constant and only regularizes the mesh
 #ADDBACKGROUNDGRID=16          # Re-grid hydrodynamics quantities on a Oct-tree AMR grid. This does not perform a simulation.
+
+#---------------------------------------  custom options related to my master thesis and starburst outflows
+#INJECT_WITHIN_RADIUS          # Turn on injection of mass and energy within a given injection radius
+#DISK_RELAX                    # Relaxes the Disk and floors tempearture and velocity for the duration of the simulation
+#EDGE_DEREFINEMENT             # Derefine edges if they are less than a certain volume.
+#REFINEMENT_CENTER_REGION      # Refine cells that are inside the injection region 
+
+#--------------------------------------- custom potential for the Miyamoto-Nagai Disk
+#STELLARDISK                   # potential of a stellar disk in cylindrical coordinates
+#M_stars=1e10                  # mass of the stellar disk
+#R_stars=0.8                   # Stellar scale radius
+#z_stars=0.15                  # stellar scale height
