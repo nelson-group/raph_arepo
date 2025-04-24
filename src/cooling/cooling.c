@@ -248,18 +248,23 @@ double convert_u_to_temp(double u, double rho, double *ne_guess)
 
   mu   = (1 + 4 * gs.yhelium) / (1 + gs.yhelium + *ne_guess);
   temp = GAMMA_MINUS1 / BOLTZMANN * u * PROTONMASS * mu;
+  if (temp == 0)
+    terminate("T=0 error in convert_u_to_temp() before we find the abundances, T = %g, mu = %g, u_input = %g\n", temp, mu, u_input);
 
   do
     {
       ne_old = *ne_guess;
-
       find_abundances_and_rates(log10(temp), rho, ne_guess);
       temp_old = temp;
-
+      
       mu = (1 + 4 * gs.yhelium) / (1 + gs.yhelium + *ne_guess);
 
       temp_new = GAMMA_MINUS1 / BOLTZMANN * u * PROTONMASS * mu;
-
+      if (temp_new == 0)
+      {
+        printf("temp_new=%g\n", temp_new);
+        terminate("temp_new = 0, in convert_u_to_temp: T = %g, u= %g, mu=%g\n", temp, u, mu);
+      }
       max = dmax(max, temp_new / (1 + gs.yhelium + *ne_guess) * fabs((*ne_guess - ne_old) / (temp_new - temp_old + 1.0)));
 
       temp = temp_old + (temp_new - temp_old) / (1 + max);
@@ -308,8 +313,11 @@ void find_abundances_and_rates(double logT, double rho, double *ne_guess)
   ne_input   = *ne_guess;
 
   if(!gsl_finite(logT))
+  {
+    // Per Illustris T = (gamma - 1)*u/kb * UnitMass/UnitEnergy *mu. The only candidates are: u and mu since the rest are constant
+    printf("Temperature T = %g\n", pow(10.0, logT));
     terminate("logT=%g\n", logT);
-
+  }
   if(logT <= Tmin) /* everything neutral */
     {
       gs.nH0    = 1.0;
@@ -517,16 +525,32 @@ double CoolingRate(double logT, double rho, double *nelec)
 
   if(logT <= Tmin)
     logT = Tmin + 0.5 * deltaT; /* floor at Tmin */
+    
+    if(!gsl_finite(logT))
+    {
+      printf("logT=%g\n", logT);
+      terminate("High T in CoolingRate() below logT <= Tmin, T = %g\n", T); // NOTE: This should be 0 if I understand this correctly.
+    }
 
   gs.nHcgs = gs.XH * rho / PROTONMASS; /* hydrogen number dens in cgs units */
 
   if(logT < Tmax)
     {
+
       find_abundances_and_rates(logT, rho, nelec);
 
       /* Compute cooling and heating rate (cf KWH Table 1) in units of nH**2 */
-      T = pow(10.0, logT);
+      
 
+      // if(!gsl_finite(u_old))
+      // terminate("invalid input: u_old=%g\n", u_old);
+
+      T = pow(10.0, logT);
+      if (T == 0)
+      {
+        printf("logT=%g\n", logT);
+        terminate("T == 0 in CoolingRate() below /* Compute cooling and heating rate (cf KWH Table 1) in units of nH**2 */. T = %g\n", T);
+      }
       LambdaExcH0   = gs.bH0 * gs.ne * gs.nH0;
       LambdaExcHep  = gs.bHep * gs.ne * gs.nHep;
       LambdaExc     = LambdaExcH0 + LambdaExcHep; /* excitation */
@@ -572,6 +596,11 @@ double CoolingRate(double logT, double rho, double *nelec)
       *nelec   = gs.ne; /* note: in units of the hydrogen number density */
 
       T        = pow(10.0, logT);
+      if(!gsl_finite(T))
+      {
+        printf("logT=%g\n", logT);
+        terminate("High T in CoolingRate() where we're outside the tabulated rates: T = %g\n", T);
+      }
       LambdaFF = 1.42e-27 * sqrt(T) * (1.1 + 0.34 * exp(-(5.5 - logT) * (5.5 - logT) / 3)) * (gs.nHp + 4 * gs.nHepp) * gs.ne;
 
       if(All.ComovingIntegrationOn)

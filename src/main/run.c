@@ -537,11 +537,11 @@ void calculate_non_standard_physics_end_of_step(void)
             }
           }
         }
-        // All.injected = 1; 
+        All.injected = 1; 
       }
-      // All.start_of_burst += All.time_between_bursts; 
-      // All.end_of_burst += All.time_between_bursts;
-      // All.injected = 0;
+      All.start_of_burst += All.end_of_burst + All.time_between_bursts; // the interval between the start of each burst-> 0.0
+      All.end_of_burst = All.start_of_burst + All.burst_duration;
+      All.injected = 0;
     }
 
     if (All.Time >= All.start_of_burst && All.Time <= All.end_of_burst) 
