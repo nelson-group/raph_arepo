@@ -227,6 +227,9 @@
 #DISK_RELAX                    # Relaxes the Disk and floors tempearture and velocity for the duration of the simulation
 #EDGE_DEREFINEMENT             # Derefine edges if they are less than a certain volume.
 #REFINEMENT_CENTER_REGION      # Refine cells that are inside the injection region 
+#METALLIC_COOLING              # Performs additional cooling of cell based on metallicity
+#NOCOOL_BACKGROUND_GRID        # Do not cool cells that are outside a specific region
+#DEBUG_FIND_CELL 
 
 #--------------------------------------- custom potential for the Miyamoto-Nagai Disk
 #STELLARDISK                   # potential of a stellar disk in cylindrical coordinates

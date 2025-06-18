@@ -421,6 +421,20 @@ void calculate_non_standard_physics_prior_mesh_construction(void)
  */
 void calculate_non_standard_physics_end_of_step(void)
 {
+/*
+  The general idea here is that as you get close to the crash, you keep on restarting at ca closer and closer time
+*/
+#ifdef DEBUG_FIND_CELL
+  for (int i = 0; i < NumGas; i++)
+  {
+    if (P[i].ID == 16713972) // whatever the crash id is 
+    {
+      printf("Particle ID = %d found in [Node %d] in [run.c] at function [calculate_non_standard_physics_end_of_step()] before cell cooling: SphP[%d].Utherm=%g, SphP[%d].Density=%g, P[%d].Pos = [%f, %f, %f], time = %f\n", 
+        16713972, ThisTask, i, SphP[i].Utherm, i, SphP[i].Density, i, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2], All.Time);
+    }
+  }
+#endif
+
 #ifdef COOLING
 #ifdef USE_SFR
   cooling_and_starformation();
@@ -510,7 +524,7 @@ void calculate_non_standard_physics_end_of_step(void)
         double radius = sqrt(pow(rad_i,2) + pow(rad_j,2) + pow(rad_k,2));
         if (radius <= All.injection_radius) // for every radius that is less than the injection radius
         {   
-          P[i].Mass += (M_dot_code * (All.TimeStep))/n_inject_global; 
+          P[i].Mass += (M_dot_code * (All.TimeStep))/n_inject_global; // TODO: Put in the metallicity as well into the info(give it  the disk metallicity)
           SphP[i].Energy += (E_dot_code * (All.TimeStep))/n_inject_global; 
         }
       }

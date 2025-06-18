@@ -29,21 +29,28 @@
  * - 27.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-#ifndef INLINE_FUNC
-#define INLINE_FUNC
-#endif /* #ifndef INLINE_FUNC */
+ #ifndef INLINE_FUNC
+ #define INLINE_FUNC
+ #endif /* #ifndef INLINE_FUNC */
+ 
+ void SetOutputGasState(int i, double *ne_guess, double *nH0, double *coolrate, double *z_coolrate, double metallicity);
+ 
+ double convert_u_to_temp(double u, double rho, double *ne_guess);
+ double CoolingRate(double logT, double rho, double *nelec, double metallicity);
+ double CoolingRateFromU(double u, double rho, double *ne_guess, double metallicity);
+ double DoCooling(double u_old, double rho, double dt, double *ne_guess, double metallicity);
+ double GetCoolingTime(double u_old, double rho, double *ne_guess, double metallicity);
+ 
+ void find_abundances_and_rates(double logT, double rho, double *ne_guess);
+ void InitCool(void);
+ void IonizeParamsUVB(void);
+ void IonizeParams(void);
+ void ReadIonizeParams(char *fname, int which);
+ void SetZeroIonization(void);
+ 
+ #ifdef METALLIC_COOLING
+ void ReadMetallicParams(const char *file_name);
+ double LambdaMetals(double T, double nh, double lambda_m[], double T_bins[], double nh_bins[], size_t T_len, size_t nh_len);
+ double neSolar(double T, double nh, double ne_solar[], double T_bins[], double nh_bins[], size_t T_len, size_t nh_len);
 
-void SetOutputGasState(int i, double *ne_guess, double *nH0, double *coolrate);
-
-double convert_u_to_temp(double u, double rho, double *ne_guess);
-double CoolingRate(double logT, double rho, double *nelec);
-double CoolingRateFromU(double u, double rho, double *ne_guess);
-double DoCooling(double u_old, double rho, double dt, double *ne_guess);
-double GetCoolingTime(double u_old, double rho, double *ne_guess);
-
-void find_abundances_and_rates(double logT, double rho, double *ne_guess);
-void InitCool(void);
-void IonizeParamsUVB(void);
-void IonizeParams(void);
-void ReadIonizeParams(char *fname, int which);
-void SetZeroIonization(void);
+ #endif

@@ -318,20 +318,109 @@ static void io_func_accel(int particle, int components, void *out_buffer, int mo
  */
 static void io_func_coolrate(int particle, int components, void *buffer, int mode)
 {
-  double tcool, ne, nh0, coolrate;
+  double tcool, ne, nh0, coolrate, z_coolrate;
 
   ne = SphP[particle].Ne;
-  SetOutputGasState(particle, &ne, &nh0, &coolrate);
+  double met;
+#ifdef METALLIC_COOLING
+  met = SphP[particle].Metallicity;
+#else 
+  met = 0;
+#endif /* #ifdef METALLIC_COOLING*/
+#ifdef NOCOOL_BACKGROUND_GRID
+  double rad_i = P[particle].Pos[0] - 0.5*All.BoxSize - All.GlobalDisplacementVector[0]; 
+  double rad_j = P[particle].Pos[1] - 0.5*All.BoxSize - All.GlobalDisplacementVector[1];
+  double rad_k = P[particle].Pos[2] - 0.5*All.BoxSize - All.GlobalDisplacementVector[2];
+  if (fabs(rad_i) <= All.BoxLimit && fabs(rad_j ) <= All.BoxLimit && fabs(rad_k) <= All.BoxLimit)
+  {
+    SetOutputGasState(particle, &ne, &nh0, &coolrate,  &z_coolrate, met);
+    /* get cooling time */
+    tcool = GetCoolingTime(SphP[particle].Utherm, SphP[particle].Density * All.cf_a3inv, &ne, met);
+    ((MyOutputFloat *)buffer)[0] = -coolrate; // cooling is negative
+  }
+  else 
+    ((MyOutputFloat *)buffer)[0] = 0; 
+#else 
+  SetOutputGasState(particle, &ne, &nh0, &coolrate,  &z_coolrate, met);
+  tcool = GetCoolingTime(SphP[particle].Utherm, SphP[particle].Density * All.cf_a3inv, &ne, met);
+  ((MyOutputFloat *)buffer)[0] = -coolrate; // cooling is negative
+#endif /*NOCOOL_BACKGROUND_GRID */
 
-  /* get cooling time */
-  tcool = GetCoolingTime(SphP[particle].Utherm, SphP[particle].Density * All.cf_a3inv, &ne);
-
-  /* convert cooling time with current thermal energy to du/dt */
-  if(tcool != 0)
-    ((MyOutputFloat *)buffer)[0] = SphP[particle].Utherm / tcool;
-  else
-    ((MyOutputFloat *)buffer)[0] = 0;
 }
+
+static void io_func_cooltime(int particle, int components, void *buffer, int mode)
+{
+  double tcool, ne, nh0, coolrate, z_coolrate;
+
+  ne = SphP[particle].Ne;
+  double met;
+#ifdef METALLIC_COOLING
+  met = SphP[particle].Metallicity;
+#else 
+  met = 0;
+#endif /* #ifdef METALLIC_COOLING*/
+#ifdef NOCOOL_BACKGROUND_GRID
+  double rad_i = P[particle].Pos[0] - 0.5*All.BoxSize - All.GlobalDisplacementVector[0]; 
+  double rad_j = P[particle].Pos[1] - 0.5*All.BoxSize - All.GlobalDisplacementVector[1];
+  double rad_k = P[particle].Pos[2] - 0.5*All.BoxSize - All.GlobalDisplacementVector[2];
+  if (fabs(rad_i) <= All.BoxLimit && fabs(rad_j ) <= All.BoxLimit && fabs(rad_k) <= All.BoxLimit)
+  {
+    SetOutputGasState(particle, &ne, &nh0, &coolrate,  &z_coolrate, met);
+    /* get cooling time */
+    tcool = GetCoolingTime(SphP[particle].Utherm, SphP[particle].Density * All.cf_a3inv, &ne, met);
+    ((MyOutputFloat *)buffer)[0] = tcool;
+  }
+  else 
+    ((MyOutputFloat *)buffer)[0] = 0; 
+#else 
+  SetOutputGasState(particle, &ne, &nh0, &coolrate,  &z_coolrate, met);
+  tcool = GetCoolingTime(SphP[particle].Utherm, SphP[particle].Density * All.cf_a3inv, &ne, met);
+  ((MyOutputFloat *)buffer)[0] = tcool;
+
+#endif /*NOCOOL_BACKGROUND_GRID */
+
+}
+
+
+
+#ifdef METALLIC_COOLING
+/*! \brief Output function of the metallic cooling rate. Same as above except for the last line.
+ *
+ *  \param[in] particle Index of particle/cell.
+ *  \param[in] (unused)
+ *  \param[out] out_buffer File output buffer.
+ *  \param[in] mode (unused)
+ *
+ *  \return void
+ */
+static void io_func_metal_coolrate(int particle, int components, void *buffer, int mode)
+{
+  double tcool, ne, nh0, coolrate, z_lambda;
+
+  ne = SphP[particle].Ne;
+  double met;
+  met = SphP[particle].Metallicity;
+
+#ifdef NOCOOL_BACKGROUND_GRID
+  double rad_i = P[particle].Pos[0] - 0.5*All.BoxSize - All.GlobalDisplacementVector[0]; 
+  double rad_j = P[particle].Pos[1] - 0.5*All.BoxSize - All.GlobalDisplacementVector[1];
+  double rad_k = P[particle].Pos[2] - 0.5*All.BoxSize - All.GlobalDisplacementVector[2];
+  if (fabs(rad_i) <= All.BoxLimit && fabs(rad_j ) <= All.BoxLimit && fabs(rad_k) <= All.BoxLimit)
+  {
+    SetOutputGasState(particle, &ne, &nh0, &coolrate, &z_lambda, met);
+    /* get cooling time */
+    ((MyOutputFloat *)buffer)[0] = z_lambda; 
+  }
+  else 
+    ((MyOutputFloat *)buffer)[0] = 0; 
+#else 
+    SetOutputGasState(particle, &ne, &nh0, &coolrate, &z_lambda, met);
+    tcool = GetCoolingTime(SphP[particle].Utherm, SphP[particle].Density * All.cf_a3inv, &ne, met);
+    ((MyOutputFloat *)buffer)[0] = z_lambda; 
+#endif /* if defined(NOCOOL_BACKGROUNDGRID) */
+}
+#endif /* #ifdef METALLIC_COOLING */
+
 #endif /* #ifdef OUTPUTCOOLRATE */
 
 /* -- user defined functions: gas properties -- */
@@ -352,12 +441,20 @@ static void io_func_ne(int particle, int components, void *buffer, int mode)
       // normal code path: calculate Ne accounting for GFM options and USE_SFR
       double ne = SphP[particle].Ne;
 
+      double met;
+#ifdef METALLIC_COOLING
+      met = SphP[particle].Metallicity;
+#else 
+      met = 0;
+#endif /* #ifdef METALLIC_COOLING*/
+      
+
 #if defined(USE_SFR)
       // reproduces previous behavior that Ne is updated prior to output only for Sfr>0 cells
       // if this is unwanted (or redundant) this if() condition should be removed
-      double nh0, coolrate;
+      double nh0, coolrate, z_coolrate;
       if(get_starformation_rate(particle) > 0)
-        SetOutputGasState(particle, &ne, &nh0, &coolrate);
+        SetOutputGasState(particle, &ne, &nh0, &coolrate, &z_coolrate, met);
 #endif /* #if defined(USE_SFR) */
 
       ((MyOutputFloat *)buffer)[0] = ne;
@@ -381,12 +478,30 @@ static void io_func_ne(int particle, int components, void *buffer, int mode)
  */
 static void io_func_nh(int particle, int components, void *buffer, int mode)
 {
-  double ne, nh0, coolrate;
+  double ne, nh0, coolrate, z_coolrate;
 
   ne = SphP[particle].Ne;
-  SetOutputGasState(particle, &ne, &nh0, &coolrate);
-
-  ((MyOutputFloat *)buffer)[0] = nh0;
+  double met;
+#ifdef METALLIC_COOLING
+  met = SphP[particle].Metallicity;
+#else 
+  met = 0;
+#endif /* #ifdef METALLIC_COOLING */
+#ifdef NOCOOL_BACKGROUND_GRID
+  double rad_i = P[particle].Pos[0] - 0.5*All.BoxSize - All.GlobalDisplacementVector[0]; 
+  double rad_j = P[particle].Pos[1] - 0.5*All.BoxSize - All.GlobalDisplacementVector[1];
+  double rad_k = P[particle].Pos[2] - 0.5*All.BoxSize - All.GlobalDisplacementVector[2];
+  if (fabs(rad_i) <= All.BoxLimit && fabs(rad_j ) <= All.BoxLimit && fabs(rad_k) <= All.BoxLimit)
+  {
+    SetOutputGasState(particle, &ne, &nh0, &coolrate,  &z_coolrate, met);
+    ((MyOutputFloat *)buffer)[0] = nh0;
+  }
+  else 
+    ((MyOutputFloat *)buffer)[0] = 0; 
+#else 
+    SetOutputGasState(particle, &ne, &nh0, &coolrate,  &z_coolrate, met);
+    ((MyOutputFloat *)buffer)[0] = nh0;
+#endif /* if defined(NOCOOL_BACKGROUNDGRID) */
 }
 #endif /* #if defined(COOLING) */
 
@@ -566,12 +681,22 @@ void init_io_fields()
 #if defined(COOLING)
   init_field(IO_NE, "NE  ", "ElectronAbundance", MEM_NONE, FILE_MY_IO_FLOAT, FILE_MY_IO_FLOAT, 1, A_NONE, 0, io_func_ne,
              GAS_ONLY);                /* electron abundance */
-  init_units(IO_NE, 0, 0, 0, 0, 0, 0); /* dimensionless fraction */
+  init_units(IO_NE, 0, 0, 0, 0, 0, All.UnitDensity_in_cgs * All.UnitVelocity_in_cm_per_s * All.UnitVelocity_in_cm_per_s); /* dimensionless fraction */
   init_snapshot_type(IO_NE, SN_MINI);
 
   init_field(IO_NH, "NH  ", "NeutralHydrogenAbundance", MEM_NONE, FILE_MY_IO_FLOAT, FILE_NONE, 1, A_NONE, 0, io_func_nh,
              GAS_ONLY);                /* neutral hydrogen fraction */
   init_units(IO_NH, 0, 0, 0, 0, 0, 0); /* dimensionless fraction */
+
+  init_field(IO_CT, "CT", "CoolingTime", MEM_NONE, FILE_MY_IO_FLOAT, FILE_NONE, 1, A_NONE, 0, io_func_cooltime,
+             GAS_ONLY);                /* Cooling Time */
+  init_units(IO_CT, 0, 0, 0, 0, 0, All.UnitTime_in_s); /* Unit time */
+
+#if defined(METALLIC_COOLING)
+  init_field(IO_Z, "Z  ", "Metallicity", MEM_MY_FLOAT, FILE_MY_IO_FLOAT, FILE_NONE, 1, A_SPHP, &SphP[0].Metallicity, 0, GAS_ONLY);
+  init_units(IO_Z, 0, 0, 0, 0, 0, 0); /* dimensionless fraction */
+  // init_field(IO_CSND, "CSND", "SoundSpeed", MEM_MY_FLOAT, FILE_MY_IO_FLOAT, FILE_NONE, 1, A_SPHP, &SphP[0].Csnd, 0, GAS_ONLY);
+#endif                                 /* #if defined(METALLIC_COOLING) */
 #endif                                 /* #if defined(COOLING) */
 
 #ifdef USE_SFR
@@ -611,6 +736,10 @@ void init_io_fields()
 #ifdef OUTPUTCOOLRATE
   init_field(IO_COOLRATE, "COOR", "CoolingRate", MEM_NONE, FILE_MY_IO_FLOAT, FILE_NONE, 1, A_NONE, 0, io_func_coolrate, GAS_ONLY);
   init_units(IO_COOLRATE, 0.0, 0.0, -1.0, 1.0, 3.0, 1.0);
+#ifdef METALLIC_COOLING
+  init_field(IO_Z_COOLRATE, "COOR", "MetallicCoolingRate", MEM_NONE, FILE_MY_IO_FLOAT, FILE_NONE, 1, A_NONE, 0, io_func_metal_coolrate, GAS_ONLY);
+  init_units(IO_Z_COOLRATE, 0.0, 0.0, -1.0, 1.0, 3.0, 1.0);
+#endif /* #ifdef METALLIC_COOLING */
 #endif /* #ifdef OUTPUTCOOLRATE */
 
 #ifdef OUTPUT_VORTICITY

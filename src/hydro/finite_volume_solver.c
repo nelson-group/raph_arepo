@@ -155,6 +155,18 @@ void restore_face_areas(tessellation *T);
  */
 void compute_interface_fluxes(tessellation *T)
 {
+
+#ifdef DEBUG_FIND_CELL
+  for (int i = 0; i < NumGas; i++)
+  {
+    if (P[i].ID == 16713972) // whatever the crash id is 
+    {
+      printf("Particle ID = %d found in [Node %d] in [finite_volume_solver.c] at function [compute_interface_fluxes()] before computing fluxes: SphP[%d].Utherm=%g, SphP[%d].Density=%g, P[%d].Pos = [%f, %f, %f], SphP[%d].Energy=%g, time = %f\n", 
+        16713972, ThisTask, i, SphP[i].Utherm, i, SphP[i].Density, i, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2], i, SphP[i].Energy, All.Time);
+    }
+  }
+#endif
+
 #ifdef NOHYDRO
   return;
 #endif /* #ifdef NOHYDRO */
@@ -591,7 +603,20 @@ void compute_interface_fluxes(tessellation *T)
 
 // #if !defined(ISOTHERM_EQS)
 #if !defined(ISOTHERM_EQS) || (defined(ISOTHERM_EQS) && defined(ISOTHERM_EQS_KEEP_INIT)) // Energy is still being exchanged
+#ifdef DEBUG_FIND_CELL
+                  if (P[p].ID == 16713972) // whatever the crash id is 
+                  {
+                    printf("Energy before exchange: %f\n", SphP[p].Energy);
+                    printf("dir: %f\n", dir);
+                    printf("fluxes.energy: %f\n",fluxes.energy );
+                  }
+#endif
                   SphP[p].Energy += dir * fluxes.energy;
+#ifdef DEBUG_FIND_CELL
+                  if (P[p].ID == 16713972) // whatever the crash id is 
+                    printf("Energy after exchange: %f\n", SphP[p].Energy);
+#endif
+
 #endif /* #if !defined(ISOTHERM_EQS)  */
                 }
               else
@@ -716,6 +741,17 @@ void compute_interface_fluxes(tessellation *T)
     }
 
   fvs_evaluate_statistics(&stat);
+
+#ifdef DEBUG_FIND_CELL
+  for (int i = 0; i < NumGas; i++)
+  {
+    if (P[i].ID == 16713972) // whatever the crash id is 
+    {
+      printf("Particle ID = %d found in [Node %d] in [finite_volume_solver.c] at function [compute_interface_fluxes()] after computing fluxes: SphP[%d].Utherm=%g, SphP[%d].Density=%g, P[%d].Pos = [%f, %f, %f], SphP[%d].Energy=%g, time = %f\n", 
+        16713972, ThisTask, i, SphP[i].Utherm, i, SphP[i].Density, i, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2], i, SphP[i].Energy, All.Time);
+    }
+  }
+#endif
 
 #ifdef MESHRELAX
   for(i = 0; i < NumGas; i++)
@@ -1889,6 +1925,13 @@ void apply_flux_list(void)
 // #ifndef ISOTHERM_EQS
 #if !defined(ISOTHERM_EQS) || (defined(ISOTHERM_EQS) && defined(ISOTHERM_EQS_KEEP_INIT)) // Energy is still being exchanged
       SphP[p].Energy += FluxListGet[i].dEnergy;
+#ifdef DEBUG_FIND_CELL
+    if (P[i].ID == 16713972) // whatever the crash id is 
+    {
+      printf("FluxListGet[i].dEnergy in apply_flux_list(): %f\n", FluxListGet[i].dEnergy);
+      printf("SphP[p].Energy  in apply_flux_list(): %f\n", SphP[p].Energy);
+    }
+#endif 
 #endif /* #ifndef ISOTHERM_EQS */
     }
   myfree(FluxListGet);

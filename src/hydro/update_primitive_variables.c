@@ -65,6 +65,14 @@ void update_primitive_variables(void)
   struct pv_update_data pvd;
   int idx, i;
 
+#ifdef DEBUG_FIND_CELL
+      if (P[i].ID == 16713972) // whatever the crash id is 
+      {
+        printf("Particle ID = %d found in [Node %d] in [update_primitive_variables.c] at function [update_primitive_variables()] before updating the primitive variables: SphP[%d].Utherm=%g, SphP[%d].Density=%g, P[%d].Pos = [%f, %f, %f],  SphP[%d].Energy=%g,  time = %f\n", 
+          16713972, ThisTask, i, SphP[i].Utherm, i, SphP[i].Density, i, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2], i, SphP[i].Energy, All.Time);
+      }
+#endif
+
   if(All.ComovingIntegrationOn)
     {
       pvd.atime    = All.Time;
@@ -84,13 +92,36 @@ void update_primitive_variables(void)
 
       update_primitive_variables_single(P, SphP, i, &pvd);
 
+#ifdef DEBUG_FIND_CELL
+      if (P[i].ID == 16713972) // whatever the crash id is 
+      {
+        printf("Particle ID = %d found in [Node %d] in [update_primitive_variables.c] at function [update_primitive_variables()] before calling [update_internal_energy()]: SphP[%d].Utherm=%g, SphP[%d].Density=%g, P[%d].Pos = [%f, %f, %f], SphP[%d].Energy=%g, time = %f\n", 
+          16713972, ThisTask, i, SphP[i].Utherm, i, SphP[i].Density, i, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2], i, SphP[i].Energy, All.Time);
+      }
+#endif
+
       update_internal_energy(P, SphP, i, &pvd);
+
+#ifdef DEBUG_FIND_CELL
+      if (P[i].ID == 16713972) // whatever the crash id is 
+      {
+        printf("Particle ID = %d found in [Node %d] in [update_primitive_variables.c] at function [update_primitive_variables()] after calling [update_internal_energy()]: SphP[%d].Utherm=%g, SphP[%d].Density=%g, P[%d].Pos = [%f, %f, %f], time = %f\n", 
+          16713972, ThisTask, i, SphP[i].Utherm, i, SphP[i].Density, i, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2], All.Time);
+      }
+#endif
 
       set_pressure_of_cell_internal(P, SphP, i); /* calculate the pressure from Density and Utherm (and composition) */
 
       SphP[i].OldMass = P[i].Mass;
 
       SphP[i].TimeLastPrimUpdate = All.Time;
+#ifdef DEBUG_FIND_CELL
+      if (P[i].ID == 16713972) // whatever the crash id is 
+      {
+        printf("Particle ID = %d found in [Node %d] in [update_primitive_variables.c] at function [update_primitive_variables()] after updating the primitive variables: SphP[%d].Utherm=%g, SphP[%d].Density=%g, P[%d].Pos = [%f, %f, %f], time = %f\n", 
+          16713972, ThisTask, i, SphP[i].Utherm, i, SphP[i].Density, i, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2], All.Time);
+      }
+#endif
     }
 
   TIMER_STOP(CPU_CELL_UPDATES);
@@ -122,7 +153,6 @@ void set_pressure_of_cell_internal(struct particle_data *localP, struct sph_part
 #ifdef ISOTHERM_EQS
 #ifdef ISOTHERM_EQS_KEEP_INIT
   localSphP[i].Pressure = localSphP[i].Density * localSphP[i].initial_cs * localSphP[i].initial_cs; 
-  // TODO -> Test this.
 #else /* #ifdef ISOTHERM_EQS_KEEP_INIT */
   localSphP[i].Pressure = localSphP[i].Density * All.IsoSoundSpeed * All.IsoSoundSpeed;
 #endif /* #ifdef ISOTHERM_EQS_KEEP_INIT */
@@ -242,10 +272,30 @@ void update_internal_energy(struct particle_data *localP, struct sph_particle_da
 #ifdef MESHRELAX
       localSphP[i].Utherm = localSphP[i].Energy / localP[i].Mass;
 #else  /* #ifdef MESHRELAX */
+#ifdef DEBUG_FIND_CELL
+      if (localP[i].ID == 16713972) // whatever the crash id is 
+      {
+        printf("Particle ID = %d in [Node %d]: Calculating local variables used to calculate the updated internal energy in index %d:\n", 
+          16713972, ThisTask, i);
+        printf("Energy = %f, Mass = %f, Vel[0] = %f, Vel[1] = %f, Vel[2] = %f, pvd->atime = %f\n", 
+          localSphP[i].Energy, localP[i].Mass, localP[i].Vel[0], localP[i].Vel[1], localP[i].Vel[2], pvd->atime);
+        printf("localSphP[i].Energy / localP[i].Mass = %f, - 0.5*(localP[i].Vel[0]*localP[i].Vel[0] + localP[i].Vel[1]*localP[i].Vel[1] + localP[i].Vel[2]*localP[i].Vel[2]))/(pvd->atime * pvd->atime) = %f\n",
+          localSphP[i].Energy/localP[i].Mass,  0.5 * (localP[i].Vel[0]*localP[i].Vel[0] + localP[i].Vel[1]*localP[i].Vel[1] + localP[i].Vel[2]*localP[i].Vel[2]));
+      }
+#endif
+
       localSphP[i].Utherm =
           (localSphP[i].Energy / localP[i].Mass -
            0.5 * (localP[i].Vel[0] * localP[i].Vel[0] + localP[i].Vel[1] * localP[i].Vel[1] + localP[i].Vel[2] * localP[i].Vel[2])) /
           (pvd->atime * pvd->atime);
+#ifdef DEBUG_FIND_CELL
+      if (localP[i].ID == 16713972) // whatever the crash id is 
+      {
+        printf("Particle ID = %d in [Node %d] in [update_primitive_variables.c] at [update_internal_energy()] after calculating localSphP: localSphP[%d].Utherm=%g, localSphP[%d].Density=%g, localP[%d].Pos = [%f, %f, %f], time = %f\n", 
+          16713972, ThisTask, i, localSphP[i].Utherm, i, localSphP[i].Density, i, localP[i].Pos[0], localP[i].Pos[1], localP[i].Pos[2], All.Time);
+      }
+#endif
+
 #endif /* #ifdef MESHRELAX #else */
 
 #ifdef MHD
@@ -262,6 +312,15 @@ void update_internal_energy(struct particle_data *localP, struct sph_particle_da
           EgyInjection -= localSphP[i].Energy;
 
           localSphP[i].Utherm = ulimit;
+
+#ifdef DEBUG_FIND_CELL
+          if (localP[i].ID == 16713972) // whatever the crash id is 
+          {
+            printf("ulimit = %f\n", ulimit);
+            printf("Particle ID = %d found in [Node %d] in [update_primitive_variables.c] at [update_internal_energy()] after setting the local internal energy to ulimit if it is less than the ulimit: localSphP[%d].Utherm=%g, localSphP[%d].Density=%g, localP[%d].Pos = [%f, %f, %f], time = %f\n", 
+              16713972, ThisTask, i, localSphP[i].Utherm, i, localSphP[i].Density, i, localP[i].Pos[0], localP[i].Pos[1], localP[i].Pos[2], All.Time);
+          }
+#endif
 
 #ifdef MESHRELAX
           localSphP[i].Energy = localP[i].Mass * localSphP[i].Utherm;
@@ -288,6 +347,14 @@ void update_internal_energy(struct particle_data *localP, struct sph_particle_da
   if(localSphP[i].Density < All.LimitUBelowThisDensity && localSphP[i].Utherm > All.LimitUBelowCertainDensityToThisValue)
     {
       localSphP[i].Utherm = All.LimitUBelowCertainDensityToThisValue;
+#ifdef DEBUG_FIND_CELL
+      if (localP[i].ID == 16713972) // whatever the crash id is 
+      {
+        printf("Particle ID = %d found in [Node %d] in [update_primitive_variables.c] at [update_internal_energy()] after setting utherm to LimitUBelowCertainDensityToThisValue if localSphP[i].Density < All.LimitUBelowThisDensity: localSphP[%d].Utherm=%g, localSphP[%d].Density=%g, localP[%d].Pos = [%f, %f, %f], time = %f\n", 
+          16713972, ThisTask, i, localSphP[i].Utherm, i, localSphP[i].Density, i, localP[i].Pos[0], localP[i].Pos[1], localP[i].Pos[2], All.Time);
+      }
+#endif
+
       localSphP[i].Energy =
           pvd->atime * pvd->atime * localP[i].Mass * localSphP[i].Utherm +
           0.5 * localP[i].Mass *

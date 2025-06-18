@@ -115,6 +115,14 @@
          break;
      }
  
+#ifdef DEBUG_FIND_CELL
+  if (P[i].ID == 16713972) // whatever the crash id is 
+  {
+    printf("Particle ID = %d found in [criterion_derefinement.c] at [derefine_should_this_cell_be_merged] after derefinement is called: SphP[%d].Utherm=%g, SphP[%d].Density=%g, P[%d].Pos = [%f, %f, %f], time = %f\n", 
+      16713972, ThisTask, i, SphP[i].Utherm, i, SphP[i].Density, i, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2], All.Time);
+  }
+#endif
+     
    return 0;
  }
  

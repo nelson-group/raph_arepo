@@ -902,6 +902,17 @@ extern struct global_data_all_processes
 
 #if defined(COOLING)
   char TreecoolFile[MAXLEN_PATH];
+#if defined(METALLIC_COOLING)
+  double InitBackgroundMetallicity; // background cell metalicity
+  double InitDiskMetallicity; // disk cell metalicity
+  double disk_density; // the density at the edges of the disk.
+#endif /* #if defined(METALLIC_COOLING) */
+
+ #ifdef NOCOOL_BACKGROUND_GRID
+  double BoxLimit;
+
+ #endif /* #ifdef NODEREFINE_BACKGROUND_GRID */
+
 #endif /* #if defined(COOLING) */
 
 #ifdef EXACT_GRAVITY_FOR_PARTICLE_TYPE
@@ -1411,6 +1422,9 @@ extern struct sph_particle_data
   MyFloat Ne; /* electron fraction, expressed as local electron number
                  density normalized to the hydrogen number density. Gives
                  indirectly ionization state and mean molecular weight. */
+#if defined(METALLIC_COOLING)
+  MyFloat Metallicity; /* The metalicity of each cell*/
+#endif 
 #endif        /* #if defined(COOLING) */
 
 #ifdef USE_SFR
@@ -1715,6 +1729,7 @@ enum iofields
   IO_BFLD,
   IO_DIVB,
   IO_COOLRATE,
+  IO_CT,
   IO_ALLOWREFINEMENT,
 
   IO_DIVVEL,
@@ -1731,6 +1746,11 @@ enum iofields
   IO_SOFTENING,
   IO_TASK,
   IO_TIMEBIN_HYDRO,
+
+  /* Place any new fields below this line*/
+/* Added */
+  IO_Z,
+  IO_Z_COOLRATE,
 
   IO_LASTENTRY /* This should be kept - it signals the end of the list */
 };

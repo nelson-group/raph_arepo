@@ -48,6 +48,9 @@ typedef struct
   double mhboltz;
   double ethmin; /* minimum internal energy for neutral gas */
   double mu;
+#ifdef METALLIC_COOLING
+  double XZ; // XC, XN, XO, XNe, XMg, XSi, XS, XCa, XFe; // metal abundances
+#endif /* METALLIC_COOLING */
 } GasState;
 
 /* tabulated rates */
@@ -78,3 +81,16 @@ typedef struct
 {
   double u_old_input, rho_input, dt_input, ne_guess_input;
 } DoCoolData;
+
+#ifdef METALLIC_COOLING
+/* metallic cooling table */
+typedef struct
+{
+  double *temperature_bins; /* temperature bins */
+  double *nh_bins;    /* density rhobins */
+  size_t rows_cooling; /* rows for each gamma */
+  size_t columns_cooling; /* columns for each gamma */
+  double *lambda_m; /* the interpolated cooling function for metal based on temperature and density. */
+  double *ne_solar; 
+} MetalTable;
+#endif /* METALLIC_COOLING */
