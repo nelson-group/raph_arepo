@@ -233,6 +233,11 @@ void update_primitive_variables_single(struct particle_data *localP, struct sph_
         }
 #endif /* #ifdef MAXSCALARS */
 
+// #ifdef METALLIC_COOLING
+//       *(MyFloat *)(((char *)(&localSphP[i])) + metallicity.offset) =
+//           *(MyFloat *)(((char *)(&localSphP[i])) + metallicity.offset_mass) / localP[i].Mass;
+// #endif /* #ifdef METALLIC_COOLING */
+
 #ifdef MHD
       localSphP[i].B[0] = localSphP[i].BConserved[0] / localSphP[i].Volume;
       localSphP[i].B[1] = localSphP[i].BConserved[1] / localSphP[i].Volume;
@@ -249,6 +254,11 @@ void update_primitive_variables_single(struct particle_data *localP, struct sph_
       for(int k = 0; k < N_Scalar; k++)
         *(MyFloat *)(((char *)(&localSphP[i])) + scalar_elements[k].offset) = 0;
 #endif /* #ifdef MAXSCALARS */
+
+// #ifdef METALLIC_COOLING
+//       *(MyFloat *)(((char *)(&localSphP[i])) + metallicity.offset) = 0
+// #endif /* #ifdef METALLIC_COOLING */
+
     }
 }
 

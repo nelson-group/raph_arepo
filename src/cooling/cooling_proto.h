@@ -53,4 +53,9 @@
  double LambdaMetals(double T, double nh, double lambda_m[], double T_bins[], double nh_bins[], size_t T_len, size_t nh_len);
  double neSolar(double T, double nh, double ne_solar[], double T_bins[], double nh_bins[], size_t T_len, size_t nh_len);
 
+ void ReadMetallicParams_CIE(const char *file_name);
+ double LambdaMetals_CIE(double T, double lambda[], double T_bins[], size_t T_len);
+ double neSolar_CIE(double T, double ne_solar[], double T_bins[], size_t T_len);
+
+
  #endif

@@ -271,6 +271,10 @@ void exchange_primitive_variables(void)
                 tmpPrimExch[off].Scalars[j] = *(MyFloat *)(((char *)(&SphP[place])) + scalar_elements[j].offset);
 #endif /* #ifdef MAXSCALARS */
 
+// #ifdef METALLIC_COOLING
+//               tmpPrimExch[off].Metallicity = *(MyFloat *)(((char *)(&SphP[place])) + metallicity[j].offset);
+// #endif /* #ifdef METALLIC_COOLING */
+
               tmpPrimExch[off].TimeLastPrimUpdate = SphP[place].TimeLastPrimUpdate;
 
               for(j = 0; j < 3; j++)
@@ -374,6 +378,10 @@ void exchange_primitive_variables_and_gradients(void)
               for(j = 0; j < N_Scalar; j++)
                 tmpPrimExch[off].Scalars[j] = *(MyFloat *)(((char *)(&SphP[place])) + scalar_elements[j].offset);
 #endif /* #ifdef MAXSCALARS */
+
+// #ifdef METALLIC_COOLING
+//               tmpPrimExch[off].Metallicity = *(MyFloat *)(((char *)(&SphP[place])) + metallicity[j].offset);
+// #endif /* #ifdef METALLIC_COOLING */
 
               tmpPrimExch[off].TimeLastPrimUpdate = SphP[place].TimeLastPrimUpdate;
 

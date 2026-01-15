@@ -104,6 +104,10 @@ double godunov_flux_3d(struct state *st_L, struct state *st_R, struct state_face
 #ifdef MAXSCALARS
         st_face->scalars = NULL;
 #endif /* #ifdef MAXSCALARS */
+
+// #ifdef METALLIC_COOLING
+//         st_face->metallicity = NULL;
+// #endif /* #ifdef METALLIC_COOLING */
         return 0;
       }
 
@@ -154,6 +158,11 @@ double godunov_flux_3d(struct state *st_L, struct state *st_R, struct state_face
 #ifdef MAXSCALARS
             st_face->scalars = NULL;
 #endif /* #ifdef MAXSCALARS */
+
+// #ifdef METALLIC_COOLING
+//         st_face->metallicity = NULL;
+// #endif /* #ifdef METALLIC_COOLING */
+
           }
         else
           {

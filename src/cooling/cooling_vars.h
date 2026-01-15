@@ -93,4 +93,6 @@ typedef struct
   double *lambda_m; /* the interpolated cooling function for metal based on temperature and density. */
   double *ne_solar; 
 } MetalTable;
+
+
 #endif /* METALLIC_COOLING */

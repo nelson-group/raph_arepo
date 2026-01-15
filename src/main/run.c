@@ -422,7 +422,7 @@ void calculate_non_standard_physics_prior_mesh_construction(void)
 void calculate_non_standard_physics_end_of_step(void)
 {
 /*
-  The general idea here is that as you get close to the crash, you keep on restarting at ca closer and closer time
+  The general idea here is that as you get close to the crash, you keep on restarting at consecutively closer time
 */
 #ifdef DEBUG_FIND_CELL
   for (int i = 0; i < NumGas; i++)
@@ -451,9 +451,14 @@ void calculate_non_standard_physics_end_of_step(void)
   double M_dot_code = M_dot_wind/(All.UnitMass_in_g/grams_in_M_sun)*(All.UnitTime_in_s/s_in_yr); // [solar masses/year] *  UnitMass_in_g/solar masses * seconds_in_year/All.UnitTime_in_s
   double E_dot_code = E_dot_wind/All.UnitEnergy_in_cgs*All.UnitTime_in_s; // [ergs/second]* UnitEnergy/ergs * seconds/Unit Time
 
+#ifdef VOLUME_BASED_INJECTION
+  double vol_inject = 0;
+  double vol_inject_global = 0;
+#else
   int n_inject = 0; // the number of gas cells in the injection region for the LOCAL Processor
   int n_inject_global = 0; // the number of gas cells in the region for ALL Processors
   // Note: variable size arrays cannot be set in C...
+#endif /* VOLUME_BASED_INJECTION */
 
   if (All.Time == 0){
     All.start_of_burst = 0;
@@ -469,7 +474,13 @@ void calculate_non_standard_physics_end_of_step(void)
       double rad_k = P[i].Pos[2] - 0.5*All.BoxSize - All.GlobalDisplacementVector[2];
       double radius = sqrt(pow(rad_i,2) + pow(rad_j,2) + pow(rad_k,2));
       if (radius <= All.injection_radius) // if it is less or equal to the injection radius
+      {
+#ifdef VOLUME_BASED_INJECTION
+        vol_inject += SphP[i].Volume;
+#else 
         n_inject++; // increment n_inject by 1
+#endif /* VOLUME_BASED_INJECTION */
+      }
     }
   }
   // IMPORTANT: Sum up the n_inject of each processor to get a global injection number.
@@ -482,35 +493,50 @@ void calculate_non_standard_physics_end_of_step(void)
     MPI_Gather is the inverse of MPI_Scatter and takes elements from each process
     to put them into the local process(a many-to-one communication process). My current values are:
     MPI_Gather(
-      void* send_data, // the address of the data being sent: &n_inject
+      void* send_data, // the address of the data being sent: &vol_inject or &n_inject
       int send_count, // how many elements are we sending over to other processors: 1
-      MPI_Datatype send_datatype, // The datatype being sent: MPI_INT
-      void* recv_data, // the address of the data being recieved by the other processors:  n_globals
+      MPI_Datatype send_datatype, // The datatype being sent: MPI_INT or MPI_DOUBLE
+      void* recv_data, // the address of the data being recieved by the other processors:  vol_globals or n_globals
       int recv_count, // number of elements in recv with that have datatype of MPI_Datatype send_datatype: 1
-      MPI_Datatype recv_datatype, // The datatype being recieved: MPI_INT
+      MPI_Datatype recv_datatype, // The datatype being recieved: MPI_INT MPI_DOUBLE
       int root, // root processor: NTask
       MPI_Comm communicator); // The communicator
     For Arepo, we need to make sure every processor knows, otherwise all the information is being sent to one processor and they're all waiting for ThisTask to get to it. Hence the 
     lag.
     MPI_Allgather(
-      void* send_data, // the address of the data being sent: &n_inject
+      void* send_data, // the address of the data being sent: &vol_inject or &n_inject
       int send_count, // how many elements are we sending over to other processors: 1
       MPI_Datatype send_datatype, // The datatype being sent: MPI_INT
-      void* recv_data, // the address of the data being recieved by the other processors:  n_globals
+      void* recv_data, // the address of the data being recieved by the other processors:  l_globals or n_globals
       int recv_count, // number of elements in recv with that have datatype of MPI_Datatype send_datatype: 1
       MPI_Datatype recv_datatype, // The datatype being recieved: MPI_INT
       MPI_Comm communicator); // The communicator  
-
       */
  /*
-      Grab all the n_injects of each NTask using MPI_Gather, then sum it. Rinse and repeat across every processor. 
+      Grab all the vol_injects or n_injects of each NTask using MPI_Gather, then sum it. Rinse and repeat across every processor. 
  */
+#ifdef VOLUME_BASED_INJECTION
+  double * vol_globals = NULL; // first declare vol_globals pointer
+  vol_globals = malloc(sizeof(double) * NTask); // allocate space for buffer. 
+  MPI_Allgather(&vol_inject, 1, MPI_DOUBLE, vol_globals, 1, MPI_DOUBLE, MPI_COMM_WORLD); // shoves n_inject into n_globals
+#else 
   int * n_globals = NULL; // first declare n_globals pointer
   n_globals = malloc(sizeof(int) * NTask); // allocate space for buffer. 
   MPI_Allgather(&n_inject, 1, MPI_INT, n_globals, 1, MPI_INT, MPI_COMM_WORLD); // shoves n_inject into n_globals
+#endif
   for (size_t i = 0; i < NTask; i++)
+  {
+#ifdef VOLUME_BASED_INJECTION
+    vol_inject_global += vol_globals[i];
+#else 
     n_inject_global += n_globals[i];
+#endif
+  }
+#ifdef VOLUME_BASED_INJECTION
+  free(vol_globals);
+#else
   free(n_globals);
+#endif 
 
   if (All.time_between_bursts == 0) // constant injection
   {
@@ -524,8 +550,18 @@ void calculate_non_standard_physics_end_of_step(void)
         double radius = sqrt(pow(rad_i,2) + pow(rad_j,2) + pow(rad_k,2));
         if (radius <= All.injection_radius) // for every radius that is less than the injection radius
         {   
-          P[i].Mass += (M_dot_code * (All.TimeStep))/n_inject_global; // TODO: Put in the metallicity as well into the info(give it  the disk metallicity)
+          double old_mass = P[i].Mass; 
+#ifdef VOLUME_BASED_INJECTION
+          P[i].Mass += (M_dot_code * (All.TimeStep))* SphP[i].Volume/vol_inject_global; 
+          SphP[i].Energy += (E_dot_code * (All.TimeStep))* SphP[i].Volume/vol_inject_global; 
+#else 
+          P[i].Mass += (M_dot_code * (All.TimeStep))/n_inject_global; 
           SphP[i].Energy += (E_dot_code * (All.TimeStep))/n_inject_global; 
+#endif
+#if defined METALLIC_COOLING
+          SphP[i].PScalars[0]  = All.InitDiskMetallicity; // make sure the outflow has the same metallicity as the disk.
+          SphP[i].PConservedScalars[0] = SphP[i].PScalars[0] * P[i].Mass;
+#endif
         }
       }
     }
@@ -546,14 +582,25 @@ void calculate_non_standard_physics_end_of_step(void)
             double radius = sqrt(pow(rad_i,2) + pow(rad_j,2) + pow(rad_k,2));
             if (radius <= All.injection_radius) // for every radius that is less than the injection radius
             {   
+              double old_mass = P[i].Mass;
+
+#ifdef VOLUME_BASED_INJECTION
+              P[i].Mass += (M_dot_code * (All.end_of_burst - All.start_of_burst))* SphP[i].Volume/vol_inject_global; 
+              SphP[i].Energy += (E_dot_code * (All.end_of_burst - All.start_of_burst))* SphP[i].Volume/vol_inject_global; 
+#else 
               P[i].Mass += (M_dot_code * (All.end_of_burst - All.start_of_burst))/n_inject_global; // all.burst_duration
               SphP[i].Energy += (E_dot_code * (All.end_of_burst - All.start_of_burst))/n_inject_global; 
+#endif
+#if defined METALLIC_COOLING
+              SphP[i].PScalars[0]  = All.InitDiskMetallicity; // make sure the outflow has the same metalicity as the disk.
+              SphP[i].PConservedScalars[0] = SphP[i].PScalars[0] * P[i].Mass;
+#endif
             }
           }
         }
         All.injected = 1; 
       }
-      All.start_of_burst += All.end_of_burst + All.time_between_bursts; // the interval between the start of each burst-> 0.0
+      All.start_of_burst = All.end_of_burst + All.time_between_bursts; // the interval between the start of each burst-> 0.0
       All.end_of_burst = All.start_of_burst + All.burst_duration;
       All.injected = 0;
     }
@@ -569,9 +616,19 @@ void calculate_non_standard_physics_end_of_step(void)
           double rad_k = P[i].Pos[2] - 0.5*All.BoxSize - All.GlobalDisplacementVector[2];
           double radius = sqrt(pow(rad_i,2) + pow(rad_j,2) + pow(rad_k,2));
           if (radius <= All.injection_radius) // for every radius that is less than the injection radius
-          {   
+          {        
+              double old_mass = P[i].Mass;
+#ifdef VOLUME_BASED_INJECTION
+              P[i].Mass += (M_dot_code * (All.TimeStep))*SphP[i].Volume/vol_inject_global;
+              SphP[i].Energy += (E_dot_code * (All.TimeStep))*SphP[i].Volume/vol_inject_global;
+#else 
               P[i].Mass += (M_dot_code * (All.TimeStep))/n_inject_global; 
               SphP[i].Energy += (E_dot_code * (All.TimeStep))/n_inject_global; 
+#endif
+#if defined METALLIC_COOLING
+              SphP[i].PScalars[0]  = All.InitDiskMetallicity; // make sure the outflow has the same metalicity as the idisk.
+              SphP[i].PConservedScalars[0] = SphP[i].PScalars[0] * P[i].Mass;
+#endif
           }
         }      
       }

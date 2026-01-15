@@ -224,10 +224,13 @@
 
 #---------------------------------------  custom options related to my master thesis and starburst outflows
 #INJECT_WITHIN_RADIUS          # Turn on injection of mass and energy within a given injection radius
+#VOLUME_BASED_INJECTION        # Changes the cell number weight in the injection to a volume based weighting. 
 #DISK_RELAX                    # Relaxes the Disk and floors tempearture and velocity for the duration of the simulation
 #EDGE_DEREFINEMENT             # Derefine edges if they are less than a certain volume.
 #REFINEMENT_CENTER_REGION      # Refine cells that are inside the injection region 
 #METALLIC_COOLING              # Performs additional cooling of cell based on metallicity
+#CIE_COOLING                 # Performs additional cooling of cell based on CIE cooling
+#CIE_PIE_COOLING              # Performs additional cooling of cell based on PIE cooling
 #NOCOOL_BACKGROUND_GRID        # Do not cool cells that are outside a specific region
 #DEBUG_FIND_CELL 
 

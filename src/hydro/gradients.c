@@ -82,6 +82,10 @@ void init_gradients()
     }
 #endif /* #ifdef MAXSCALARS */
 
+// #ifdef METALLIC_COOLING
+//   gradient_init(&SphP[0].Metallicity, &PrimExch[0].Metallicity, SphP[0].Grad.dZ, GRADIENT_TYPE_NORMAL);
+// #endif /* #ifdef METALLIC_COOLING */
+
   mpi_printf("INIT: %d/%d Gradients used.\n", N_Grad, MAXGRADIENTS);
 }
 

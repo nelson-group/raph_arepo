@@ -72,6 +72,7 @@
  static DoCoolData DoCool;     /*!< cooling data */
 #ifdef METALLIC_COOLING
  static MetalTable MetalT;  /*!< heating functions and values the high temperature metallic cooling */
+ static MetalTable MetalT_CIE;  /*!< heating functions and values the high temperature metallic cooling */
 
 #endif 
  /*! \brief Computes the new internal energy per unit mass.
@@ -508,7 +509,12 @@
    *coolrate = CoolingRateFromU(u, rho, ne_guess, metallicity);
 #ifdef METALLIC_COOLING
    double T = convert_u_to_temp(u, rho, ne_guess);
-   *z_lambda = LambdaMetals(T, gs.nHcgs, MetalT.lambda_m, MetalT.temperature_bins, MetalT.nh_bins, MetalT.rows_cooling, MetalT.columns_cooling);
+#ifdef CIE_PIE_COOLING
+  *z_lambda = LambdaMetals(T, gs.nHcgs, MetalT.lambda_m, MetalT.temperature_bins, MetalT.nh_bins, MetalT.rows_cooling, MetalT.columns_cooling);
+#endif 
+#ifdef CIE_COOLING
+   *z_lambda = LambdaMetals_CIE(T, MetalT_CIE.lambda_m, MetalT_CIE.temperature_bins, MetalT_CIE.rows_cooling);
+#endif
 #endif /* #ifdef METALLIC_COOLING */
    *nH0 = gs.nH0;
  }
@@ -584,11 +590,22 @@
          
 #ifdef METALLIC_COOLING
       // takes temperature in non-logged T, 
+#ifdef CIE_PIE_COOLING
       double lambda_metals = LambdaMetals(T, gs.nHcgs, MetalT.lambda_m, MetalT.temperature_bins, MetalT.nh_bins, MetalT.rows_cooling, MetalT.columns_cooling);
       double electron_solar =  neSolar(T, gs.nHcgs,  MetalT.ne_solar, MetalT.temperature_bins, MetalT.nh_bins, MetalT.rows_cooling, MetalT.columns_cooling);
+#endif
+#ifdef CIE_COOLING
+      double lambda_metals =  LambdaMetals_CIE(T, MetalT_CIE.lambda_m, MetalT_CIE.temperature_bins, MetalT_CIE.rows_cooling);
+      double electron_solar =  neSolar_CIE(T,  MetalT.ne_solar, MetalT.temperature_bins, MetalT.rows_cooling);
+#endif
+
       if (electron_solar <= 0)
         terminate("The solar electron abundance is less than or equal to 0 for: T = %g, nh=%g, ne_solar=%g\n", T, gs.nHcgs, electron_solar);
-      LambdaMet += gs.ne/electron_solar*lambda_metals*metallicity/gs.XZ; 
+
+      double divisor = gs.ne/electron_solar;
+
+      LambdaMet += lambda_metals*metallicity/gs.XZ*divisor; //electron_solar; // gs.ne/electron_solar*
+
 #endif 
          
        Lambda = LambdaPrim + LambdaMet + LambdaDust + LambdaCmptn + LambdaMol;
@@ -631,7 +648,9 @@
  
        Lambda = LambdaFF + LambdaCmptn;
      }
- 
+#if defined(CIE_COOLING)
+   return (- Lambda); // CIE ignores the effects of the UV background. So there is no photoionic heating
+#endif 
    return (Heat - Lambda);
  }
  
@@ -840,25 +859,41 @@
   // Taken from (Wiersma, R. P. C., Schaye, J., & Smith, B. D. 2009a, MNRAS, 393, 99) 
   // The hdf5 file contains cooling rates Lambda_{odot}/nh^2 for various metals for given temperature and number density bins and for solar abundances
    ReadMetallicParams("./z_0.000.hdf5"); 
+   ReadMetallicParams_CIE("./z_collis.hdf5"); 
+
    /* Set default metalicity mass fraction */
    // The values here are taken from (Hopkins 2018, MNRAS, 480, 800) and are taken for solar abundances
    // (Z, He, C, N, O, Ne, Mg, Si, S, Ca, Fe)
    // (0.02, 0.28, 3.26e-3, 1.3e-3, 8.65e-3, 2.22e-3, 9.31e-4, 1.08e-3, 6.44e-4, 1.01e-4, 1.73e-3)
    gs.XZ = 0.02; // gs.XC = 3.26e-3, gs.XN=1.3e-3, gs.XO=8.65e-3, gs.XNe=2.22e-3, gs.XMg=9.31e-4, gs.XSi=1.08e-3, gs.XS=6.44e-4, gs.XCa=1.01e-4, gs.XFe=1.73e-3;
+   
+  //  double T1 = 1e5;
+  //  double T2 = 1.874e06;
+  //  double T3 = 5e5;
+  //  double T4 = -1;
+  //  double T5 = 0;
+  //  double T6 = 1e30;
+  //  double T7 = 1e4;
 
-   // testing statements: Comment out if not testing
-  //  double min_T = 8256.697781802315;
-  //  double max_T =  1874012.0563893782;
-  //  double min_rho = 4.6246323467423566e-05;
-  //  double max_rho = 44.820618745181974;
-  //  double high_rho = 1e30;
-  //  double low_rho = 1e-30;
-  //  double high_T = 1e30;
-  //  double low_T = 1e-30;
-  //  double rho_0 = 0;
-  //  double T_0 = 0;
-  //  double neg_rho = -1;
-  //  double neg_T = -1;
+  //   // //  testing functions
+  //  double lambda_1 = LambdaMetals_CIE(T1,MetalT_CIE.lambda_m,MetalT_CIE.temperature_bins, MetalT_CIE.rows_cooling);
+  //  printf("Interpolated cooling for T = %0.3e, Lambda_z = %0.3e\n", T1, lambda_1);
+  //  double lambda_2 = LambdaMetals_CIE(T2,MetalT_CIE.lambda_m,MetalT_CIE.temperature_bins, MetalT_CIE.rows_cooling);
+  //  printf("Interpolated cooling for T = %0.3e, Lambda_z = %0.3e\n", T2, lambda_2);
+  //  double lambda_3 = LambdaMetals_CIE(T3,MetalT_CIE.lambda_m,MetalT_CIE.temperature_bins, MetalT_CIE.rows_cooling);
+  //  printf("Interpolated cooling for T = %0.3e, Lambda_z = %0.3e\n", T3, lambda_3);
+  //  double lambda_4 = LambdaMetals_CIE(T4,MetalT_CIE.lambda_m,MetalT_CIE.temperature_bins, MetalT_CIE.rows_cooling);
+  //  printf("Interpolated cooling for T = %0.3e, Lambda_z = %0.3e\n", T4, lambda_4);
+  //  double lambda_5 = LambdaMetals_CIE(T5,MetalT_CIE.lambda_m,MetalT_CIE.temperature_bins, MetalT_CIE.rows_cooling);
+  //  printf("Interpolated cooling for T = %0.3e, Lambda_z = %0.3e\n", T5, lambda_5);
+  //  double lambda_6 = LambdaMetals_CIE(T6,MetalT_CIE.lambda_m,MetalT_CIE.temperature_bins, MetalT_CIE.rows_cooling);
+  //  printf("Interpolated cooling for T = %0.3e, Lambda_z = %0.3e\n", T6, lambda_6);
+  //  double lambda_7 = LambdaMetals_CIE(T7,MetalT_CIE.lambda_m,MetalT_CIE.temperature_bins, MetalT_CIE.rows_cooling);
+  //  printf("Interpolated cooling for T = %0.3e, Lambda_z = %0.3e\n", T7, lambda_7);
+  //  double lambda_8 = LambdaMetals_CIE(T7,MetalT_CIE.lambda_m,MetalT_CIE.temperature_bins, MetalT_CIE.rows_cooling);
+  //  printf("Interpolated cooling for T = %0.3e, Lambda_z = %0.3e\n", T7, lambda_7);
+   
+
   //  printf("testing functions\n");
   // //  testing functions
   //  double lambda_1 = LambdaMetals(min_T, max_rho, MetalT.lambda_m, MetalT.temperature_bins, MetalT.nh_bins, MetalT.rows_cooling, MetalT.columns_cooling);
@@ -903,8 +938,20 @@
   //  double ne10 = neSolar(neg_T, neg_rho, MetalT.ne_solar, MetalT.temperature_bins, MetalT.nh_bins, MetalT.rows_cooling, MetalT.columns_cooling);
   //  printf("ne solar for T = %0.3e, nh = %0.3e: ne = %0.3e\n", neg_T, neg_rho, ne10);  
 
+//   struct metallicity metallicity;
+
+//   metallicity_init(&SphP[0].Metallicity[i], &SphP[0].pMetallicity[i], SCALAR_TYPE_PASSIVE);
+
+//   /* save type and relative address */
+//   metallicity.type        = type;
+//   metallicity.offset      = ((char *)addr) - ((char *)&SphP[0]);
+//   metallicity.offset_mass = ((char *)addr_mass) - ((char *)&SphP[0]);
+
+// #else  /* #ifdef MAXSCALARS */
+//   return -1;
+// #endif /* #ifdef MAXSCALARS #else */
+
    #endif /* #ifdef METALLIC_COOLING */
- 
    mpi_printf("GFM_COOLING: time, time begin = %le\t%le\n", All.Time, All.TimeBegin);
    All.Time = All.TimeBegin;
    set_cosmo_factors_for_current_time();
@@ -912,6 +959,8 @@
    IonizeParams();
  
  
+
+
  }
  
  /*! \brief Apply the isochoric cooling to all the active gas cells.
@@ -985,7 +1034,12 @@
    dtime = All.cf_atime * dt / All.cf_time_hubble_a;
 
 #ifdef METALLIC_COOLING
-   met = SphP[i].Metallicity;
+   if (SphP[i].PScalars[0] < All.InitBackgroundMetallicity/2)
+      SphP[i].PScalars[0] = All.InitBackgroundMetallicity/2;
+    // SphP[i].PScalars[0] = 0; //  In case the metallicity is less than 0, then we set it to 0
+   met = SphP[i].PScalars[0];
+   // Change to terminate instead
+  //  met = SphP[i].Metallicity;
 #else 
    met = 0;
 #endif /* #ifdef METALLIC_COOLING */
@@ -1027,7 +1081,7 @@
  
  #ifdef METALLIC_COOLING
 
-   /*! \brief Read the HDF5 file and gets the bins for temperature, density, and cooling rate for metallic cooling.
+   /*! \brief Read and extracts values from a PIE metallic cooling HDF5 file.
    *
    *  \param[in] file_name Name of file that contains the tabulated parameters.
    *
@@ -1124,9 +1178,9 @@
    H5Fclose(file_id);
  }
  
-  /*! \brief Returns the interpolated metallic cooling function of a gas cell
+  /*! \brief Returns the interpolated metallic cooling function of a gas cell using a PIE cooling table.
   *
-  *  This function takes read values from a sorted table and uses a bilinear interpolate to get the metallic cooling rate for a cell. 
+  *  This function takes values from a sorted table and uses a bilinear interpolate to get the metallic cooling rate for a cell. 
   *  It is assumed that the table is small and any performance differences between search algorithms is negligible.
   * 
   *  \param[in] T The temperature of the cell
@@ -1135,7 +1189,7 @@
   *  \param[in] T_bins The temperature bins
   *  \param[in] nh_bins The hydrogen number density bins 
   *  \param[in] T_len The number of the temperature bins
-  *  \return double
+  *  \return interpolated metallic cooling rate given cell temperature and density.
   */
  double LambdaMetals(double T, double nh, double lambda[], double T_bins[], double nh_bins[], size_t T_len, size_t nh_len)
  {
@@ -1203,7 +1257,7 @@
    return ((nh_b2 - nhp)/(nh_b2 - nh_b1)*gt1 + (nhp - nh_b1)/(nh_b2 - nh_b1)*gt2); 
  }
 
-  /*! \brief Returns the interpolated solar electron abundances for a cell 
+  /*! \brief Returns the interpolated solar electron abundances for a cell using a PIE cooling table.
   *
   *  This function takes read values from a sorted table and uses a nearest neighbors approach to interpolate the electron abundances for a given cell.
   *  It is assumed that the table is small and any performance differences between search algorithms is negligible.
@@ -1213,8 +1267,9 @@
   *  \param[in] ne_solar The electron abundances for a given range of temperatures and densities, formated as a 1d array of length (T_len + nh_len)
   *  \param[in] T_bins The temperature bins
   *  \param[in] nh_bins The hydrogen number density bins 
-  *  \param[in] T_len The number of the temperature bins
-  *  \return void
+  *  \param[in] T_len The number of temperature bins
+  *  \param[in] nh_len The number of hydrogen density bins
+  *  \return solar electron abundance given cell temperature and density.
   */
  double neSolar(double T, double nh, double ne_solar[], double T_bins[], double nh_bins[], size_t T_len, size_t nh_len)
  {
@@ -1240,7 +1295,142 @@
 
    return ne_solar[Tn_index*nh_len + nhn_index]; 
  }
- #endif /* #ifdef METALLIC_COOLING */
+
+
+   /*! \brief Read and extracts values from a CIE metallic cooling HDF5 file.
+   *
+   *  \param[in] file_name Name of file that contains the tabulated parameters.
+   *
+   *  \return void */
+ void ReadMetallicParams_CIE(const char *file_name)
+ {
+   hsize_t *Tdims;
+   hsize_t *gdims_metal;
+   hsize_t *nedims;
  
- #endif /* #ifdef COOLING */
+   hid_t file_id = H5Fopen(file_name, H5F_ACC_RDONLY, H5P_DEFAULT); // open up the file 
+   hid_t temp_bin_id = H5Dopen(file_id, "/Total_Metals/Temperature_bins"); // get the temperature dataset
+   hid_t gm_id_metal = H5Dopen(file_id, "/Total_Metals/Net_cooling"); // get the cooling function data set
+   hid_t ne_id = H5Dopen(file_id, "/Solar/Electron_density_over_n_h"); // get the solar electron abundnace 
+   // /Total_Metals/Net_cooling
+   hid_t tbin_space = H5Dget_space(temp_bin_id); // get the space id
+   int T_rank = H5Sget_simple_extent_ndims(tbin_space); // get the rank -> 1 for rho or T, 2 for gamma
+   Tdims = malloc(T_rank * sizeof(hsize_t)); // dynamicalloy allocate size for T 
+   printf("Tdims: %f\n", Tdims);
+   H5Sget_simple_extent_dims(tbin_space, Tdims, NULL); // Retrieves dataspace dimension size and maximum size
+   MetalT_CIE.temperature_bins = malloc(Tdims[0] * sizeof(double)); // allocate space for the temperature bins
+   H5Dread(temp_bin_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, MetalT_CIE.temperature_bins); // read and get the temperature bins
+ 
+   hid_t gm_space = H5Dget_space(gm_id_metal); // get the space id
+   int gm_rank = H5Sget_simple_extent_ndims(gm_space); // get the rank -> 1 for rho or T, 2 for gamma
+   gdims_metal = malloc(gm_rank * sizeof(hsize_t)); // dynamically allocate size for gamma
+   H5Sget_simple_extent_dims(gm_space, gdims_metal, NULL); // Retrieves dataspace dimension size and maximum size
+   MetalT_CIE.lambda_m = malloc(gdims_metal[0]* sizeof(double)); // allocate space for the gamma bins
+   printf("gdims_metal: %f\n", gdims_metal);
+
+   H5Dread(gm_id_metal, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,  MetalT_CIE.lambda_m); // read and get the gamma values. Note that this is actually a 1d array with row major format
+ 
+    MetalT_CIE.rows_cooling = gdims_metal[0];
+  //   MetalT_CIE.columns_cooling = gdims_metal[1];
+
+   hid_t ne_space = H5Dget_space(ne_id); // get the space id
+   int ne_rank = H5Sget_simple_extent_ndims(ne_space); // get the rank -> 1 for rho or T, 2 for gamma or ne 
+   nedims = malloc(ne_rank * sizeof(hsize_t)); // dynamically allocate size for gamma
+   H5Sget_simple_extent_dims(ne_space, nedims, NULL); // Retrieves dataspace dimension size and maximum size
+    MetalT_CIE.ne_solar = malloc(nedims[0] * sizeof(double)); // allocate space for the gamma bins
+   H5Dread(ne_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,  MetalT_CIE.ne_solar); // read and get the gamma values. Note that this is actually a 1d array with row major format
+
+   free(Tdims); 
+   free(gdims_metal); 
+   free(nedims);
+
+   H5Sclose(tbin_space);
+   H5Sclose(gm_space);
+   H5Sclose(ne_space);
+
+   H5Dclose(temp_bin_id);
+   H5Dclose(gm_id_metal);
+   H5Dclose(ne_id);
+
+   H5Fclose(file_id);
+ }
+ 
+  /*! \brief Returns the interpolated metallic cooling function of a gas cell using a CIE cooling table.
+  *
+  *  This function takes read values from a sorted table and uses a linear interpolate to get the metallic cooling rate for a cell. 
+  *  It is assumed that the table is small and any performance differences between search algorithms is negligible.
+  * 
+  *  \param[in] T The temperature of the cell
+  *  \param[in] lambda The cooling rates for a given range of temperatures and densities, formated as a 1d array of length (T_len + nh_len)
+  *  \param[in] T_bins The temperature bins
+  *  \param[in] T_len The number of the temperature bins
+  *  \return interpolated cooling rate given cell temperature.
+  */
+ double LambdaMetals_CIE(double T, double lambda[], double T_bins[], size_t T_len)
+ {
+   // 1. Determine the temperature  and points
+   double Tp;
+   size_t Th_index = 0;
+   // 1.1.a Check if T is outside T_bins and set Tp and Th_index accordingly
+   if (T >= T_bins[T_len - 1]) // if T is higher than the highest value, use the last two bins
+   {
+    Th_index = T_len - 1;
+    Tp = T_bins[T_len - 1]; // use the maximum temperature in the table
+   }
+   else if (T <= T_bins[0])  // if T is lower than the lowest value, use the first two bins
+   {
+    Th_index = 1;
+    Tp = T_bins[0]; // Use the lowest temperature in the table
+   }
+   // 1.1.b Apply a linear search to search through our temperature bins 
+   else 
+   {
+    for (size_t i = 0; i < T_len; i++)
+    {
+      Th_index = i;
+      if (T_bins[i] > T)
+        break;
+    }
+    Tp = T; // use the cell temperature
+   }
+
+   // 2. Get the values for specific bins
+   size_t Tl_index = Th_index - 1;
+   double T1 = T_bins[Tl_index], T2 = T_bins[Th_index]; 
+
+   // 3. Perform a linear interpolation to get the cooling rate for the disk
+   // f(x) = f(x1)*(x2 -x)/(x2 - x1) + f(y2)(x-x1)/(x2-x1)
+   double g1 = lambda[Tl_index];
+   double g2 = lambda[Th_index];
+   return ((T2 - Tp)/(T2 - T1))*g1 + ((Tp - T1)/(T2 - T1))*g2;
+ }
+
+  /*! \brief Returns the interpolated solar electron abundances for a cell using a CIE cooling table.
+  *
+  *  This function takes read values from a sorted table and uses a nearest neighbors approach to interpolate the electron abundances for a given cell.
+  *  It is assumed that the table is small and any performance differences between search algorithms is negligible.
+  *
+  *  \param[in] T The temperature of the cell
+  *  \param[in] ne_solar The electron abundances for a given range of temperatures and densities, formated as a 1d array of length (T_len + nh_len)
+  *  \param[in] T_bins The temperature bins
+  *  \param[in] T_len The number of the temperature bins
+  *  \return solar electron abundance given cell temperature
+  */
+ double neSolar_CIE(double T, double ne_solar[], double T_bins[], size_t T_len)
+ {
+   double dT = abs(T - T_bins[0]);
+   size_t Tn_index = 0;
+   for (size_t i = 1; i < T_len; i++)
+   {
+    if (abs(T - T_bins[i]) < dT)
+    {
+      dT = abs(T - T_bins[i]);
+      Tn_index = i;
+    }
+   }
+   return ne_solar[Tn_index]; 
+ }
+ #endif /* #ifdef METALLIC_COOLING */
+
+#endif /* #ifdef COOLING */
  

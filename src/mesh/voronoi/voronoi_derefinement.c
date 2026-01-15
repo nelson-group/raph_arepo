@@ -122,6 +122,8 @@ static struct flux_list_data
 #ifdef MAXSCALARS
   double dConservedScalars[MAXSCALARS];
 #endif /* #ifdef MAXSCALARS */
+
+
 } * FluxList;
 
 static int Nflux, MaxNflux;
@@ -631,6 +633,7 @@ int do_derefinements(void)
                                 fac * (*(MyFloat *)(((char *)(&SphP[i])) + scalar_elements[s].offset_mass));
 #endif /* #ifdef MAXSCALARS */
 
+
 #ifdef REFINEMENT_SPLIT_CELLS
                           FlagDoNotRefine[p] = 1;
 #endif /* #ifdef REFINEMENT_SPLIT_CELLS */
@@ -680,6 +683,7 @@ int do_derefinements(void)
                             FluxList[Nflux].dConservedScalars[s] =
                                 fac * (*(MyFloat *)(((char *)(&SphP[i])) + scalar_elements[s].offset_mass));
 #endif /* #ifdef MAXSCALARS */
+
                           Nflux++;
                         }
                     }

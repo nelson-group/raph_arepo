@@ -379,6 +379,14 @@ int do_refinements(void)
                 }
 #endif /* #ifdef MAXSCALARS */
 
+// #ifdef METALLIC_COOLING
+
+//               *(MyFloat *)(((char *)(&SphP[i])) + metallicity.offset_mass) *= faci;
+//               *(MyFloat *)(((char *)(&SphP[j])) + metallicity.offset_mass) *= facj;
+
+// #endif /* #ifdef METALLIC_COOLING */
+
+
 #ifdef REFINEMENT_HIGH_RES_GAS
               /* the change in the SphP[].HighResMass is treated as part of the Scalars loop above */
               SphP[i].AllowRefinement += 2; /* increment the refinement "generation" of both cells */

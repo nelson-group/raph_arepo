@@ -421,28 +421,24 @@ void read_ic(const char *fname, int readTypes)
   u_init = (1.0 / GAMMA_MINUS1) * (BOLTZMANN / PROTONMASS) * All.InitGasTemp;
   u_init *= All.UnitMass_in_g / All.UnitEnergy_in_cgs; /* unit conversion */
 
-#if defined(METALLIC_COOLING)
-/* First off, we need a new field called metallicity*/
+#if defined(METALLIC_COOLING) // NOTE: Only works if passive scalar is on
 
   for (i = 0; i < NumGas; i++)
   {
     if (SphP[i].Density >= All.disk_density) // are we inside the disk???
-      SphP[i].Metallicity = All.InitDiskMetallicity;
+    {
+      // SphP[i].Metallicity = All.InitDiskMetallicity;
+
+      SphP[i].PScalars[0] = All.InitDiskMetallicity;
+    }
     else // we are in the background
-      SphP[i].Metallicity = All.InitBackgroundMetallicity;
+    {
+      // SphP[i].Metallicity = All.InitBackgroundMetallicity;
+      SphP[i].PScalars[0] = All.InitBackgroundMetallicity;
+
+    }
   }
 #endif /* #if defined(METALLIC_COOLING) */
-/*
- *  TODO: 
- * 
- *  Make two analogous variables to All.InitGasTemp called InitGasMetallicity, one for the disk and one for the background
- *  for (int i = 0; i < NumGas; ++i)
- *      if density >= disk density 
- *       give it disk_metallicty 
- *     else
- *       give it background metallicity 
- * 
-*/
 
   if(All.InitGasTemp > 1.0e4) /* assuming FULL ionization */
     molecular_weight = 4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC));

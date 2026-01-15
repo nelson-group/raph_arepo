@@ -114,6 +114,10 @@ static struct flux_list_data
   double dEnergy;
 #endif /* #ifndef ISOTHERM_EQS */
 
+// #ifdef METALLIC_COOLING
+//   double dMetallicity;
+// #endif /* #ifdef METALLIC_COOLING */
+
 #ifdef MAXSCALARS
   double dConservedScalars[MAXSCALARS];
 #endif /* #ifdef MAXSCALARS */
@@ -436,6 +440,9 @@ void compute_interface_fluxes(tessellation *T)
 
       /* set the face states and fluxes of those quantities that are passively advected */
       face_set_scalar_states_and_fluxes(&state_L, &state_R, &state_face, &fluxes);
+// #ifdef METALLIC_COOLING
+//       face_set_metallicity_states_and_fluxes(&state_L, &state_R, &state_face, &fluxes);
+// #endif /* METALLIC_COOLING */
 
       face_limit_fluxes(&state_L, &state_R, &state_center_L, &state_center_R, &fluxes, face_dt, &count, &count_reduced);
 
@@ -465,6 +472,11 @@ void compute_interface_fluxes(tessellation *T)
       face_add_fluxes_advection(&state_face, &fluxes, &geom, vel_face);
       face_set_scalar_states_and_fluxes(&state_L, &state_R, &state_face, &fluxes);
 
+// #ifdef METALLIC_COOLING
+//       face_set_metallicity_states_and_fluxes(&state_L, &state_R, &state_face, &fluxes);
+// #endif /* METALLIC_COOLING */
+  
+
 #endif /* #ifndef MESHRELAX #else */
 
 #ifndef ISOTHERM_EQS
@@ -490,6 +502,10 @@ void compute_interface_fluxes(tessellation *T)
 #if defined(MAXSCALARS)
           int m;
 #endif /* #if defined(MAXSCALARS) */
+
+// #if defined(METALLIC_COOLING)
+//           int zm;
+// #endif /* #if defined(METALLIC_COOLING) */
 
           fac *= 0.5;
 
@@ -600,6 +616,10 @@ void compute_interface_fluxes(tessellation *T)
                       *(MyFloat *)(((char *)(&SphP[p])) + scalar_elements[m].offset_mass) += dir * fluxes.scalars[m];
                     }
 #endif /* #ifdef MAXSCALARS */
+
+// #ifdef METALLIC_COOLING
+//                   SphP[p].Metallicity += dir * fluxes.metallicity;
+// #endif /* #ifdef METALLIC_COOLING */
 
 // #if !defined(ISOTHERM_EQS)
 #if !defined(ISOTHERM_EQS) || (defined(ISOTHERM_EQS) && defined(ISOTHERM_EQS_KEEP_INIT)) // Energy is still being exchanged
@@ -927,6 +947,9 @@ int face_get_state(tessellation *T, int p, int i, struct state *st)
         st->scalars[j] = *(MyFloat *)(((char *)(&SphP[particle])) + scalar_elements[j].offset);
 #endif /* #ifdef MAXSCALARS */
 
+// #ifdef METALLIC_COOLING
+//       st->metallicity = SphP[particle].Metallicity;
+// #endif /* #ifdef METALLIC_COOLING */
       aBegin = SphP[particle].TimeLastPrimUpdate;
 
       st->oldmass     = SphP[particle].OldMass;
@@ -968,6 +991,10 @@ int face_get_state(tessellation *T, int p, int i, struct state *st)
       for(j = 0; j < N_Scalar; j++)
         st->scalars[j] = PrimExch[particle].Scalars[j];
 #endif /* #ifdef MAXSCALARS */
+
+// #ifdef METALLIC_COOLING
+//       st->metallicity = PrimExch[particle].Metallicity[j];
+// #endif /* #ifdef METALLIC_COOLING */
 
       aBegin = PrimExch[particle].TimeLastPrimUpdate;
 
@@ -1300,6 +1327,12 @@ void face_do_time_extrapolation(struct state *delta, struct state *st, double at
           -dt_half * (st->velx * grad->dscalars[k][0] + st->vely * grad->dscalars[k][1] + st->velz * grad->dscalars[k][2]);
     }
 #endif /* #if defined(MAXSCALARS) */
+
+
+// #if defined(METALLIC_COOLING)
+//   delta->metallicity[k] =
+//       -dt_half * (st->velx * grad->dZ[0] + st->vely * grad->dZ[1] + st->velz * grad->dZ[2]);
+// #endif /* #if defined(METALLIC_COOLING) */
 }
 
 /*! \brief Extrapolates the state in space.
@@ -1361,6 +1394,12 @@ void face_do_spatial_extrapolation(struct state *delta, struct state *st, struct
                                                     r);
     }
 #endif /* #ifdef MAXSCALARS */
+
+// #ifdef METALLIC_COOLING
+//   face_do_spatial_extrapolation_single_quantity(&delta->metallicity, st->metallicity, st_other->metallicity, grad->dZ, dx,
+//                                                    r);
+// #endif /* #ifdef METALLIC_COOLING */
+
 }
 
 /*! \brief Extrapolates a single quantity in space.
@@ -1457,6 +1496,10 @@ void face_add_extrapolation(struct state *st_face, struct state *delta, struct f
   for(k = 0; k < N_Scalar; k++)
     st_face->scalars[k] += delta->scalars[k];
 #endif /* #ifdef MAXSCALARS */
+
+// #ifdef METALLIC_COOLING
+//   st_face->metallicity += delta->metallicity;
+// #endif /* #ifdef METALLIC_COOLING */
 }
 
 /*! \brief Adds an extrapolation to state.
@@ -1613,6 +1656,44 @@ void face_set_scalar_states_and_fluxes(struct state *st_L, struct state *st_R, s
 
 #endif /* #if defined(MAXSCALARS) */
 }
+
+// /*! \brief Sets the metallicity states compute the metallicity flux from mass flux.
+//  *
+//  *  \param[in] st_L Left hand side state.
+//  *  \param[in] st_R Right hand side state.
+//  *  \param[out] st_face Face state.
+//  *  \param[out] flux Flux over face.
+//  *
+//  *  \return void
+//  */
+// void face_set_metallicity_states_and_fluxes(struct state *st_L, struct state *st_R, struct state_face *st_face, struct fluxes *flux)
+// {
+// #if defined(METALLIC_COOLING)
+//   double normfac, normifac;
+
+//   if(flux->mass > 0)
+//     st_face->metallicity = st_L->metallicity;
+//   else
+//     st_face->metallicity = st_R->metallicity;
+
+//   /* Normalize species here */
+//   normfac = 0;
+
+//     flux->metallicity = st_face->metallicity * flux->mass;
+
+//     if(metallicity.type == SCALAR_TYPE_SPECIES)
+//       normfac += st_face->metallicity;
+
+//   if(normfac != 0)
+//     {
+//       normifac = 1.0 / normfac;
+//       if(metallicity.type == SCALAR_TYPE_SPECIES || scalar_elements[i].type == SCALAR_TYPE_NORMALIZE)
+//         flux->metallicity *= normifac;
+//     }
+
+// #endif /* #if defined(METALLIC_COOLING) */
+// }
+
 
 #if defined(RIEMANN_HLLC) || defined(RIEMANN_HLLD)
 /*! \brief Converts flux from face frame to simulation box frame.
@@ -1776,6 +1857,11 @@ void face_limit_fluxes(struct state *st_L, struct state *st_R, struct state *st_
       for(int i = 0; i < N_Scalar; i++)
         flux->scalars[i] *= reduc_fac;
 #endif /* #ifdef MAXSCALARS */
+
+
+// #ifdef METALLIC_COOLING
+//       flux->metallicity *= reduc_fac;
+// #endif /* #ifdef MAXSCALARS */
     }
 }
 
@@ -1921,6 +2007,12 @@ void apply_flux_list(void)
       for(k = 0; k < N_Scalar; k++)
         *(MyFloat *)(((char *)(&SphP[p])) + scalar_elements[k].offset_mass) += FluxListGet[i].dConservedScalars[k];
 #endif /* #ifdef MAXSCALARS */
+
+// #ifdef METALLIC_COOLING
+  
+//       SphP[p].Metallicity += FluxListGet[i].Metallicity;
+// #endif /* #ifdef METALLIC_COOLING */
+
 
 // #ifndef ISOTHERM_EQS
 #if !defined(ISOTHERM_EQS) || (defined(ISOTHERM_EQS) && defined(ISOTHERM_EQS_KEEP_INIT)) // Energy is still being exchanged

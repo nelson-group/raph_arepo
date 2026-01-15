@@ -908,10 +908,9 @@ extern struct global_data_all_processes
   double disk_density; // the density at the edges of the disk.
 #endif /* #if defined(METALLIC_COOLING) */
 
- #ifdef NOCOOL_BACKGROUND_GRID
+#ifdef NOCOOL_BACKGROUND_GRID
   double BoxLimit;
-
- #endif /* #ifdef NODEREFINE_BACKGROUND_GRID */
+#endif /* #ifdef NODEREFINE_BACKGROUND_GRID */
 
 #endif /* #if defined(COOLING) */
 
@@ -1422,9 +1421,9 @@ extern struct sph_particle_data
   MyFloat Ne; /* electron fraction, expressed as local electron number
                  density normalized to the hydrogen number density. Gives
                  indirectly ionization state and mean molecular weight. */
-#if defined(METALLIC_COOLING)
-  MyFloat Metallicity; /* The metalicity of each cell*/
-#endif 
+// #if defined(METALLIC_COOLING)
+//   MyFloat Metallicity; /* The metalicity of each cell */
+// #endif 
 #endif        /* #if defined(COOLING) */
 
 #ifdef USE_SFR
