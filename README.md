@@ -5,6 +5,6 @@ The project comprises configuration options for stellar-feedback processes that 
 
 Additionally, the code also includes an implementation of a simple metallic radiative cooling model that reads off of publically available lookup tables of [Wiersma et al. 2009](https://local.strw.leidenuniv.nl/WSS08/). Two cooling schemes are used: (i) PIE, which is dependent on both density and temperature, and (ii) CIE, which is solely temperature dependent. 
 
-The scripts used to analyze the thesis can be found at [here](github.com/nelson-group/raph_thesis_scripts). The thesis is available at this [link](https://github.com/nelson-group/raph_thesis_scripts/blob/main/msc_thesis.pdf). 
+The scripts used to analyze the thesis can be found at [here](https://github.com/nelson-group/raph_thesis_scripts). The thesis is available at this [link](https://github.com/nelson-group/raph_thesis_scripts/blob/main/msc_thesis.pdf). 
 
 Avenues for future development include implementing more complex stellar feedback routines (For example, a cluster feedback model similar to the one implemented by [Schneider et al. 2018](https://arxiv.org/abs/1803.01005)), as a well a more extensive radiative cooling model. 
